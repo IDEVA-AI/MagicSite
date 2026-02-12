@@ -412,6 +412,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
           contentEditable
           suppressContentEditableWarning
           onBlur={(e) => handleFieldChange(field, e.currentTarget.textContent || "")}
+          onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
           className={`
             w-full rounded-md border border-border/40 bg-background/50 px-3 py-2
             text-sm transition-all cursor-text
@@ -765,6 +766,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleFieldChange("services", e.currentTarget.textContent || "")}
+                onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                 onFocus={(e) => {
                   if (!e.currentTarget.textContent?.trim()) {
                     e.currentTarget.textContent = ""
@@ -790,6 +792,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleFieldChange("brandHistory", e.currentTarget.textContent || "")}
+                onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                 className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all cursor-text hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
                 data-placeholder="Conte a história da sua marca, quando começou, qual foi a motivação, missão e valores..."
               >
@@ -810,6 +813,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleFieldChange("workProcess", e.currentTarget.textContent || "")}
+                onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                 className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all cursor-text hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
                 data-placeholder="Descreva como funciona seu processo: etapas, metodologia, tempo de entrega..."
               >
@@ -831,6 +835,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => handleFieldChange("team", e.currentTarget.textContent || "")}
+                  onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                   className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all cursor-text hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
                   data-placeholder="Descreva sua equipe, profissionais principais, experiência..."
                 >
@@ -851,6 +856,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={(e) => handleFieldChange("certifications", e.currentTarget.textContent || "")}
+                  onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                   className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all cursor-text hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
                   data-placeholder="Liste certificações, prêmios, tecnologias, diferenciais técnicos..."
                 >
@@ -872,6 +878,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => handleFieldChange("faq", e.currentTarget.textContent || "")}
+                onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                 className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all cursor-text hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
                 data-placeholder="P: Qual o prazo de entrega?&#10;R: O prazo varia conforme o projeto...&#10;&#10;P: Como funciona o pagamento?&#10;R: Aceitamos diversas formas..."
               >

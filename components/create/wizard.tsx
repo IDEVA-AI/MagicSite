@@ -53,6 +53,7 @@ export function CreateProjectWizard() {
               setProjectData({ ...projectData, ...data })
               setCurrentStep(2)
             }}
+            initialData={projectData}
           />
         )}
         {currentStep === 2 && (

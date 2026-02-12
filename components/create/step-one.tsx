@@ -12,22 +12,25 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface StepOneProps {
   onNext: (data: any) => void
+  initialData?: any
 }
 
-export function StepOne({ onNext }: StepOneProps) {
+export function StepOne({ onNext, initialData }: StepOneProps) {
   const [formData, setFormData] = useState({
-    businessName: "",
-    phone: "",
-    email: "",
-    segment: "",
-    customSegment: "",
-    address: "",
-    description: "",
-    instagram: "",
-    businessHours: "",
+    businessName: initialData?.businessName || "",
+    phone: initialData?.phone || "",
+    email: initialData?.email || "",
+    segment: initialData?.segmentKey || initialData?.segment || "",
+    customSegment: initialData?.customSegment || "",
+    address: initialData?.address || "",
+    description: initialData?.description || "",
+    instagram: initialData?.instagram || "",
+    businessHours: initialData?.businessHours || "",
   })
 
-  const [showCustomSegment, setShowCustomSegment] = useState(false)
+  const [showCustomSegment, setShowCustomSegment] = useState(
+    (initialData?.segmentKey || initialData?.segment) === "outro"
+  )
   const [isAiHelping, setIsAiHelping] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 

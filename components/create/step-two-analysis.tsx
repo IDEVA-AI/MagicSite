@@ -309,70 +309,53 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
       let valueProposition = ""
       let strategicDeclaration = ""
 
-      try {
-        setCurrentPhase("Gerando proposta de valor...")
-        const response = await fetch("/api/agents/value-proposition", {
+      setCurrentPhase("Gerando proposta de valor e declaração estratégica...")
+
+      const requestBody = {
+        businessName: initialData.businessName,
+        segment: segmentName,
+        segmentKey: initialData.segmentKey,
+        customSegment: initialData.customSegment,
+        location: initialData.address,
+        description: initialData.description,
+        siteObjective: initialData.siteObjective,
+      }
+
+      // Run both API calls in parallel for speed
+      const [vpResult, sdResult] = await Promise.allSettled([
+        fetch("/api/agents/value-proposition", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
           credentials: "include",
-          body: JSON.stringify({
-            businessName: initialData.businessName,
-            segment: segmentName,
-            segmentKey: initialData.segmentKey,
-            customSegment: initialData.customSegment,
-            location: initialData.address,
-            description: initialData.description,
-          }),
-        })
-
-        const payload = await response.json().catch(() => null)
-
-        if (!response.ok || !payload?.valueProposition) {
-          throw new Error(payload?.error || "Não foi possível gerar a proposta de valor.")
-        }
-
-        valueProposition = payload.valueProposition
-        if (cancelled) return
-        setProgress(45)
-      } catch (err) {
-        if (cancelled) return
-        console.error("Erro na proposta de valor", err)
-        valueProposition = buildAnalysisData().valueProposition
-      }
-
-      try {
-        setCurrentPhase("Criando declaração estratégica...")
-        const response = await fetch("/api/agents/strategic-declaration", {
+          body: JSON.stringify(requestBody),
+        }).then(async (r) => {
+          const p = await r.json().catch(() => null)
+          if (!r.ok || !p?.valueProposition) throw new Error(p?.error || "Falha")
+          return p.valueProposition as string
+        }),
+        fetch("/api/agents/strategic-declaration", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
           credentials: "include",
-          body: JSON.stringify({
-            businessName: initialData.businessName,
-            segment: segmentName,
-            segmentKey: initialData.segmentKey,
-            customSegment: initialData.customSegment,
-            location: initialData.address,
-            description: initialData.description,
-            valueProposition,
-            siteObjective: initialData.siteObjective,
-          }),
-        })
+          body: JSON.stringify({ ...requestBody, valueProposition: "" }),
+        }).then(async (r) => {
+          const p = await r.json().catch(() => null)
+          if (!r.ok || !p?.declaration) throw new Error(p?.error || "Falha")
+          return p.declaration as string
+        }),
+      ])
 
-        const payload = await response.json().catch(() => null)
-        if (!response.ok || !payload?.declaration) {
-          throw new Error(payload?.error || "Não foi possível gerar a declaração estratégica.")
-        }
+      if (cancelled) return
+      setProgress(75)
 
-        strategicDeclaration = payload.declaration
-        if (cancelled) return
-        setProgress(75)
-      } catch (err) {
-        if (cancelled) return
-        console.error("Erro na declaração estratégica", err)
-        strategicDeclaration = buildAnalysisData(valueProposition).detailedDescription
-      }
+      const fallback = buildAnalysisData()
+      valueProposition = vpResult.status === "fulfilled" ? vpResult.value : fallback.valueProposition
+      if (vpResult.status === "rejected") console.error("Erro na proposta de valor", vpResult.reason)
+
+      strategicDeclaration = sdResult.status === "fulfilled" ? sdResult.value : buildAnalysisData(valueProposition).detailedDescription
+      if (sdResult.status === "rejected") console.error("Erro na declaração estratégica", sdResult.reason)
 
       if (!cancelled) {
         const baseData = buildAnalysisData(valueProposition)
@@ -409,21 +392,38 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
   const handleAiHelpDescription = async () => {
     setIsAiHelpingDescription(true)
 
-    setTimeout(() => {
-      const businessName = initialData.businessName || "seu negócio"
+    try {
+      const response = await fetch("/api/agents/strategic-declaration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        credentials: "include",
+        body: JSON.stringify({
+          businessName: initialData.businessName,
+          segment: segmentName,
+          segmentKey: initialData.segmentKey,
+          customSegment: initialData.customSegment,
+          location: initialData.address,
+          description: initialData.description,
+          valueProposition: analysisData.valueProposition,
+        }),
+      })
 
-      // Generate enhanced description based on all available data
-      const enhancedDescription = `O meu negócio é ${segmentName} que transforma a realidade de ${analysisData.valueProposition.split("Eu ajudo ")[1]?.split(" que sofrem")[0] || "nossos clientes"}. Eu atuo no setor de ${segmentName}, localizado em ${initialData.address}, e meu diferencial é o atendimento personalizado aliado à expertise técnica comprovada. 
-
-Meu público-alvo são pessoas e empresas que enfrentam desafios específicos em sua área e buscam soluções profissionais e eficazes. Eles desejam alcançar resultados concretos com suporte especializado e acompanhamento próximo. 
-
-A comunicação da minha marca é profissional, confiável e focada em resultados. O objetivo principal dela é ser reconhecida como referência em ${segmentName} na região, pela qualidade técnica e atendimento diferenciado. 
-
-É importante considerar que o mercado está em constante evolução, com crescente demanda por serviços especializados e profissionais qualificados, criando oportunidade de atuação estratégica para quem oferece excelência e comprometimento.`
-
-      setAnalysisData({ ...analysisData, detailedDescription: enhancedDescription })
+      const payload = await response.json().catch(() => null)
+      if (response.ok && payload?.declaration) {
+        setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: payload.declaration }))
+      } else {
+        // Fallback to template-based generation
+        const fallback = buildAnalysisData(analysisData.valueProposition)
+        setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: fallback.detailedDescription }))
+      }
+    } catch (err) {
+      console.error("Erro ao gerar descrição com IA", err)
+      const fallback = buildAnalysisData(analysisData.valueProposition)
+      setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: fallback.detailedDescription }))
+    } finally {
       setIsAiHelpingDescription(false)
-    }, 2000)
+    }
   }
 
   const handleSubmit = () => {
@@ -489,6 +489,7 @@ A comunicação da minha marca é profissional, confiável e focada em resultado
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => setAnalysisData({ ...analysisData, valueProposition: e.currentTarget.textContent || "" })}
+            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
             className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors"
           >
             {analysisData.valueProposition}
@@ -533,6 +534,7 @@ A comunicação da minha marca é profissional, confiável e focada em resultado
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => setAnalysisData({ ...analysisData, detailedDescription: e.currentTarget.textContent || "" })}
+            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
             className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors min-h-[120px]"
           >
             {analysisData.detailedDescription}
@@ -555,6 +557,7 @@ A comunicação da minha marca é profissional, confiável e focada em resultado
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => setAnalysisData({ ...analysisData, siteObjective: e.currentTarget.textContent || "" })}
+            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
             className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors min-h-[100px] whitespace-pre-wrap"
           >
             {analysisData.siteObjective}

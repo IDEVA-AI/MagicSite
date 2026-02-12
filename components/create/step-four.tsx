@@ -49,8 +49,33 @@ export function StepFour({ onBack, projectData = {} }: StepFourProps) {
       ? projectData.customSegment || projectData.segment || "Segmento não informado"
       : projectData.segment || projectData.customSegment || "Segmento não informado"
 
+  const b = projectData.briefing || {}
+
   const generateCompletePrompt = () => {
-    return `Crie um site profissional completo para ${projectData.businessName || "meu negócio"}.
+    const wireframeSections = projectData.wireframe
+      ?.map(
+        (section: any, index: number) =>
+          `### ${index + 1}. ${section.title}\n${section.instructions}`,
+      )
+      .join("\n\n") || "Estrutura não definida"
+
+    const additionalSections = [
+      b.services && `## SERVIÇOS/PRODUTOS DETALHADOS\n${b.services}`,
+      b.brandHistory && `## HISTÓRIA DA MARCA\n${b.brandHistory}`,
+      b.workProcess && `## PROCESSO DE TRABALHO\n${b.workProcess}`,
+      b.team && `## EQUIPE\n${b.team}`,
+      b.certifications && `## CERTIFICAÇÕES E DIFERENCIAIS TÉCNICOS\n${b.certifications}`,
+      b.faq && `## PERGUNTAS FREQUENTES (FAQ)\n${b.faq}`,
+    ].filter(Boolean).join("\n\n")
+
+    return `Crie um site profissional completo usando React + Tailwind CSS para ${projectData.businessName || "meu negócio"}.
+
+## IDENTIDADE DA MARCA
+- Nome: ${projectData.businessName || "Não informado"}
+- Segmento: ${resolvedSegment}
+- Tom de voz: ${b.toneOfVoice || "Profissional e confiável"}
+- Filosofia central: ${b.corePhilosophy || "Não definida"}
+- Valores inegociáveis: ${b.nonNegotiableValues || "Não definidos"}
 
 ## PROPOSTA DE VALOR
 ${resolvedValueProposition}
@@ -61,62 +86,66 @@ ${resolvedDescription}
 ## OBJETIVO DO SITE
 ${resolvedSiteObjective}
 
+## PÚBLICO-ALVO
+- Perfil: ${b.targetAudience || "Não definido"}
+- Desafios que enfrentam: ${b.audienceChallenges || "Não definidos"}
+- Aspirações: ${b.audienceAspirations || "Não definidas"}
+
+## POSICIONAMENTO ESTRATÉGICO
+- O que oferecemos: ${b.offering || "Não definido"}
+- Diferencial competitivo: ${b.differential || "Não definido"}
+- Objetivo estratégico: ${b.strategicObjective || "Não definido"}
+- Promessa final: ${b.finalPromise || "Não definida"}
+- Emoção desejada no visitante: ${b.desiredEmotion || "Confiança"}
+
+## CONTEXTO COMERCIAL
+- Contexto de mercado: ${b.marketContext || "Não definido"}
+- Modelo de entrega: ${b.deliveryModel || "Não definido"}
+- Prova social: ${b.socialProof || "Não definida"}
+- Objeções comuns a superar no site: ${b.commonObjections || "Não definidas"}
+- Serviço adicional: ${b.additionalService || "Não definido"}
+- Ticket médio: ${b.averageTicket || "Sob consulta"}
+
 ## INFORMAÇÕES DE CONTATO
 - WhatsApp: ${projectData.phone || "Não informado"}
+- E-mail: ${projectData.email || "Não informado"}
 - Endereço: ${projectData.address || "Não informado"}
+- Instagram: ${projectData.instagram || "Não informado"}
+- Horário de Funcionamento: ${projectData.businessHours || "Não informado"}
 
-## ESTRUTURA DO SITE
-Crie as seguintes seções:
+## ESTRUTURA DO SITE (WIREFRAME)
+Crie as seguintes seções na ordem indicada:
 
-${projectData.wireframe
-        ?.map(
-          (section: any, index: number) => `
-### ${index + 1}. ${section.title}
-${section.instructions}
-`,
-        )
-        .join("\n") || "Estrutura não definida"
-      }
+${wireframeSections}
 
-## PALETA DE CORES
-- Cor Primária: ${resolvedColors.primary}
-- Cor Secundária: ${resolvedColors.secondary}
+## DESIGN
+- Cor Primária: ${resolvedColors.primary} (usar em CTAs, botões, links, destaques de navegação e títulos principais)
+- Cor Secundária: ${resolvedColors.secondary} (usar em botões secundários, hover states, badges e complementos visuais)
 - Tema: ${resolvedColors.theme === "dark" ? "Escuro (Dark)" : "Claro (Light)"}
+- Tipografia: usar fonte sans-serif moderna e limpa, bold (700-900) para títulos, regular para corpo
 
-## CHAMADAS PARA AÇÃO
-- CTA Principal: ${resolvedCtas.primary}
-- CTA Secundário: ${resolvedCtas.secondary}
-- CTA Alternativo: ${resolvedCtas.alternative}
+## CHAMADAS PARA AÇÃO (CTAs)
+- CTA Principal: "${resolvedCtas.primary}" (posicionar no hero e na seção final de conversão)
+- CTA Secundário: "${resolvedCtas.secondary}" (posicionar nas seções intermediárias)
+- CTA Alternativo: "${resolvedCtas.alternative}" (posicionar na navbar e footer)
 
-${projectData.briefing?.services ? `## SERVIÇOS/PRODUTOS DETALHADOS
-${projectData.briefing.services}` : ""}
+${additionalSections}
 
-${projectData.briefing?.brandHistory ? `## HISTÓRIA DA MARCA
-${projectData.briefing.brandHistory}` : ""}
+## INSTRUÇÕES TÉCNICAS
+Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes acima. O site deve:
 
-${projectData.briefing?.workProcess ? `## PROCESSO DE TRABALHO
-${projectData.briefing.workProcess}` : ""}
-
-${projectData.briefing?.team ? `## EQUIPE
-${projectData.briefing.team}` : ""}
-
-${projectData.briefing?.certifications ? `## CERTIFICAÇÕES E DIFERENCIAIS TÉCNICOS
-${projectData.briefing.certifications}` : ""}
-
-${projectData.briefing?.faq ? `## PERGUNTAS FREQUENTES (FAQ)
-${projectData.briefing.faq}` : ""}
-
-## INSTRUÇÕES PARA DESENVOLVIMENTO
-Crie um site moderno, responsivo e profissional seguindo todas essas diretrizes. Use TODAS as informações de contexto fornecidas acima para criar conteúdo rico e personalizado. O site deve:
-
-1. Ser totalmente responsivo (mobile-first)
-2. Ter performance otimizada
-3. Incluir todas as seções do wireframe
-4. Usar as cores e tema especificados
-5. Incorporar o contexto adicional (serviços, história, processo, etc.) de forma natural
-6. Ter CTAs estratégicos posicionados adequadamente
-7. Ser acessível e seguir boas práticas de SEO
-8. Ter código limpo e bem estruturado`
+1. Ser totalmente responsivo (mobile-first) com breakpoints para mobile, tablet e desktop
+2. Ter performance otimizada: lazy loading em imagens, semantic HTML, código minificado
+3. Incluir TODAS as seções do wireframe na ordem especificada
+4. Usar as cores primária e secundária conforme descrito na seção DESIGN
+5. Incorporar todo o contexto adicional (serviços, história, processo, equipe, FAQ) de forma natural nas seções
+6. Ter CTAs estratégicos posicionados conforme indicado (hero, seções, navbar, footer)
+7. Incluir meta tags para SEO: title, description, Open Graph, headings hierárquicos (h1 > h2 > h3)
+8. Seguir acessibilidade WCAG AA: contraste adequado, aria-labels, navegação por teclado, alt text em imagens
+9. Tom de voz da copy: ${b.toneOfVoice || "profissional e confiável"} em TODO o texto do site
+10. Incluir botão flutuante de WhatsApp no canto inferior direito
+11. Usar placeholders descritivos para imagens (ex: "foto profissional mostrando o serviço em ação")
+12. Adicionar animações sutis: fade-in nas seções ao scroll, hover effects nos cards e botões`
   }
 
 

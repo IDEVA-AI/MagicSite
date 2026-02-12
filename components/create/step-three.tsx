@@ -48,6 +48,20 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
   }, [hasExistingWireframe])
 
   const generateWireframe = () => {
+    const briefing = initialData?.briefing || {}
+    const businessName = initialData?.businessName || "seu negócio"
+    const segment = initialData?.customSegment || initialData?.segment || "seu segmento"
+    const ctaPrimary = briefing.ctaPrimary || "Fale com Especialista"
+    const ctaSecondary = briefing.ctaSecondary || "Saiba Mais"
+    const offering = briefing.offering || `serviços de ${segment}`
+    const differential = briefing.differential || "atendimento personalizado"
+    const targetAudience = briefing.targetAudience || "seu público-alvo"
+    const toneOfVoice = briefing.toneOfVoice || "profissional e confiável"
+    const finalPromise = briefing.finalPromise || "resultados excepcionais"
+    const socialProof = briefing.socialProof || "clientes satisfeitos"
+    const primaryColor = briefing.primaryColor || "#1D4ED8"
+    const secondaryColor = briefing.secondaryColor || "#ff8800"
+
     setSections([
       {
         id: "hero",
@@ -55,7 +69,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: Layout,
         layout: "full",
         instructions:
-          "Título impactante destacando a proposta de valor principal. Subtítulo explicando como você resolve o problema do cliente. CTA primário visível (ex: 'Fale com Especialista'). Imagem ou vídeo de destaque mostrando o serviço/produto em ação.",
+          `Título impactante para ${businessName} destacando: "${finalPromise}". Subtítulo explicando como ajudamos ${targetAudience}. Botão CTA principal: "${ctaPrimary}" com cor ${primaryColor}. Imagem de destaque: foto profissional representando ${segment} em ação. Tom: ${toneOfVoice}.`,
       },
       {
         id: "about",
@@ -63,7 +77,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: Users,
         layout: "split",
         instructions:
-          "História da empresa em 2-3 parágrafos curtos. Missão e valores que conectam emocionalmente. Números de impacto (anos de experiência, clientes atendidos). Foto da equipe ou fundador para humanizar a marca.",
+          `História de ${businessName} em 2-3 parágrafos curtos, focando na jornada e motivação. Missão: ${briefing.corePhilosophy || "qualidade e compromisso"}. Destacar o diferencial: ${differential}. Números de impacto (anos de experiência, clientes atendidos). Foto da equipe ou fundador. Tom: ${toneOfVoice}.`,
       },
       {
         id: "services",
@@ -71,7 +85,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: Award,
         layout: "grid",
         instructions:
-          "3-6 cards com principais serviços/produtos. Cada card com ícone, título, descrição curta (2-3 linhas). Foco nos benefícios, não apenas features. Link para 'Saiba Mais' em cada serviço.",
+          `3-6 cards detalhando: ${offering}. Cada card com ícone representativo, título do serviço, descrição de 2-3 linhas focando nos benefícios para ${targetAudience}. Botão "${ctaSecondary}" em cada card com cor ${secondaryColor}. Destacar como cada serviço resolve os desafios: ${briefing.audienceChallenges || "do público"}.`,
       },
       {
         id: "differentials",
@@ -79,7 +93,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: Sparkles,
         layout: "grid",
         instructions:
-          "4-6 diferenciais únicos que te destacam da concorrência. Ícones representativos para cada diferencial. Textos curtos e diretos (1-2 linhas cada). Usar dados concretos quando possível (ex: '98% de satisfação').",
+          `4-6 diferenciais de ${businessName}: incluir "${differential}" como principal. Ícones representativos para cada diferencial. Textos curtos (1-2 linhas). Superar objeções comuns: ${briefing.commonObjections || "preocupações do público"}. Usar dados concretos quando possível.`,
       },
       {
         id: "testimonials",
@@ -87,7 +101,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: MessageSquare,
         layout: "grid",
         instructions:
-          "3-6 depoimentos reais de clientes satisfeitos. Incluir nome, cargo/empresa e foto do cliente. Destacar resultados específicos alcançados. Adicionar logos de empresas parceiras se aplicável.",
+          `3-6 depoimentos de ${targetAudience} satisfeitos. Incluir nome, cargo/empresa e foto. Destacar resultados alcançados e a emoção: ${briefing.desiredEmotion || "confiança e segurança"}. Reforçar: ${socialProof}. Adicionar logos de parceiros se aplicável.`,
       },
       {
         id: "cta",
@@ -95,7 +109,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
         icon: Phone,
         layout: "full",
         instructions:
-          "Seção de conversão com fundo destacado. Título persuasivo reforçando o benefício principal. Formulário simples (nome, email, telefone) ou botão de WhatsApp. Garantia ou incentivo para ação imediata (ex: 'Consulta gratuita').",
+          `Seção de conversão com fundo em ${primaryColor}. Título: reforçar "${finalPromise}" para ${targetAudience}. Botão principal: "${ctaPrimary}". Incluir botão de WhatsApp: ${initialData?.phone || "número"}. Superar objeção final: ${briefing.commonObjections || "incentivo para ação imediata"}.`,
       },
     ])
   }
@@ -183,6 +197,7 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
                       contentEditable
                       suppressContentEditableWarning
                       onBlur={(e) => handleInstructionChange(section.id, e.currentTarget.textContent || "")}
+                      onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
                       className="text-sm leading-relaxed text-foreground/90 focus:outline-none focus:bg-background/50 focus:ring-2 focus:ring-primary/20 rounded p-2 hover:bg-background/30 transition-colors cursor-text"
                     >
                       {section.instructions}
