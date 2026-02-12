@@ -46,6 +46,9 @@ function LoginForm() {
 
       toast.success("Login realizado com sucesso!")
 
+      // Set auth flag for client-layout guard
+      localStorage.setItem("magicsite-authed", "true")
+
       // Refresh router to update server components
       router.refresh()
 

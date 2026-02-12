@@ -254,7 +254,9 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
 
         const data = await response.json()
         if (cancelled) return
-        setBriefing(data.briefing || data)
+        // Merge AI response with fallback defaults so missing fields get filled
+        const aiBriefing = data.briefing || data
+        setBriefing({ ...generateBriefing(), ...aiBriefing })
         setProgress(100)
       } catch (err: any) {
         console.error("Erro ao gerar briefing", err)

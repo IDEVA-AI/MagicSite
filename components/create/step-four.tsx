@@ -455,7 +455,7 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
 
       setSaved(true)
       setTimeout(() => {
-        router.push("/dashboard")
+        router.push("/app")
       }, 1000)
 
     } catch (error) {

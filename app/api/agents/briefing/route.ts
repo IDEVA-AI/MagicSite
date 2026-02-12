@@ -25,22 +25,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nome do negócio é obrigatório." }, { status: 400 })
     }
 
-    const userMessage = `Dados completos do negócio para geração do briefing estratégico:
+    const userMessage = `Dados do negócio:
+- Nome: ${businessName}
+- Segmento: ${resolvedSegment}
+- Localização: ${location || "Não informado"}
+- Descrição: ${description || "Não fornecida"}
+- Proposta de valor: ${valueProposition || "Não definida"}
+- Descrição detalhada: ${detailedDescription || "Não fornecida"}
+- Objetivo do site: ${siteObjective || "Não definido"}
 
-Nome da Empresa: ${businessName}
-Segmento: ${resolvedSegment}
-Localização: ${location || "Não informado"}
-Descrição do negócio: ${description || "Não fornecida"}
-Proposta de valor: ${valueProposition || "Não definida"}
-Descrição detalhada: ${detailedDescription || "Não fornecida"}
-Objetivo do site: ${siteObjective || "Não definido"}
-
-Gere o JSON com as 21 variáveis estratégicas personalizadas para este negócio específico. Cada campo deve ter conteúdo rico e contextualizado (2-4 frases), não genérico.`
+IMPORTANTE: Gere um JSON com TODOS os 24 campos obrigatórios. Campos estratégicos (offering, differential, targetAudience, audienceChallenges, toneOfVoice, strategicObjective, finalPromise, commonObjections) devem ter 2-3 frases. Campos secundários (sector, averageTicket, ctaPrimary, ctaSecondary, ctaAlternative, primaryColor, secondaryColor, theme) podem ser curtos (1 frase ou valor direto). NÃO omita nenhum campo.`
 
     const { content, usage } = await callAgent({
       promptName: "briefing_v1",
       userMessage,
-      maxTokensOverride: 1500,
+      maxTokensOverride: 3000,
     })
 
     const briefing = parseJsonResponse(content)
