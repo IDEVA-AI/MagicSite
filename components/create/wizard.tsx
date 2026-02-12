@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { StepIndicator } from "./step-indicator"
 import { StepOne } from "./step-one"
 import { StepTwoAnalysis } from "./step-two-analysis"
@@ -8,15 +8,107 @@ import { BriefingReview } from "./briefing-review"
 import { StepThree } from "./step-three"
 import { StepFour } from "./step-four"
 
-export function CreateProjectWizard() {
-  const [currentStep, setCurrentStep] = useState(1)
-  const [projectData, setProjectData] = useState<any>({})
+const STORAGE_KEY = "magicsite-wizard-draft"
 
+interface WizardDraft {
+  currentStep: number
+  projectData: any
+  savedAt: string
+}
+
+function loadDraft(): WizardDraft | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const draft: WizardDraft = JSON.parse(raw)
+    // Discard drafts older than 24 hours
+    const age = Date.now() - new Date(draft.savedAt).getTime()
+    if (age > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+    return draft
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(currentStep: number, projectData: any) {
+  try {
+    const draft: WizardDraft = {
+      currentStep,
+      projectData,
+      savedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    // localStorage may be full or unavailable
+  }
+}
+
+export function clearWizardDraft() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+export function CreateProjectWizard() {
+  const draft = useRef(loadDraft())
+  const [currentStep, setCurrentStep] = useState(draft.current?.currentStep ?? 1)
+  const [projectData, setProjectData] = useState<any>(draft.current?.projectData ?? {})
+  const [showDraftBanner, setShowDraftBanner] = useState(!!draft.current)
+  const hasData = useRef(false)
+
+  // Load projectType from sessionStorage (existing behavior)
   useEffect(() => {
     const projectType = sessionStorage.getItem("projectType")
     if (projectType) {
       setProjectData((prev: any) => ({ ...prev, projectType }))
     }
+  }, [])
+
+  // Auto-save draft on step/data changes
+  useEffect(() => {
+    if (currentStep === 1 && !projectData.businessName) return
+    hasData.current = true
+    saveDraft(currentStep, projectData)
+  }, [currentStep, projectData])
+
+  // Warn before leaving with unsaved data
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasData.current && currentStep < 5) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [currentStep])
+
+  // Scroll to top on step change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [currentStep])
+
+  const handleDismissDraft = useCallback(() => {
+    clearWizardDraft()
+    setCurrentStep(1)
+    setProjectData({})
+    setShowDraftBanner(false)
+    hasData.current = false
+  }, [])
+
+  const handleStepClick = (stepNumber: number) => {
+    if (stepNumber <= currentStep) {
+      setCurrentStep(stepNumber)
+    }
+  }
+
+  const updateAndAdvance = useCallback((data: any, nextStep: number) => {
+    setProjectData((prev: any) => ({ ...prev, ...data }))
+    setCurrentStep(nextStep)
   }, [])
 
   const steps = [
@@ -27,12 +119,6 @@ export function CreateProjectWizard() {
     { number: 5, title: "Prompt" },
   ]
 
-  const handleStepClick = (stepNumber: number) => {
-    if (stepNumber <= currentStep) {
-      setCurrentStep(stepNumber)
-    }
-  }
-
   return (
     <div className="max-w-5xl mx-auto space-y-12">
       <div className="space-y-4 text-center">
@@ -42,6 +128,28 @@ export function CreateProjectWizard() {
         </p>
       </div>
 
+      {showDraftBanner && (
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-primary/30 bg-primary/5">
+          <p className="text-sm font-medium">
+            Encontramos um projeto em andamento. Deseja continuar de onde parou?
+          </p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => setShowDraftBanner(false)}
+              className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Continuar
+            </button>
+            <button
+              onClick={handleDismissDraft}
+              className="px-4 py-2 text-sm font-semibold rounded-lg border border-border hover:bg-muted transition-colors"
+            >
+              Começar novo
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="glow-border bg-card/80 backdrop-blur-sm p-6 rounded-xl">
         <StepIndicator steps={steps} currentStep={currentStep} onStepClick={handleStepClick} />
       </div>
@@ -49,39 +157,27 @@ export function CreateProjectWizard() {
       <div className="bg-card/50 backdrop-blur-sm rounded-xl p-8 border-2 border-border/50">
         {currentStep === 1 && (
           <StepOne
-            onNext={(data) => {
-              setProjectData({ ...projectData, ...data })
-              setCurrentStep(2)
-            }}
+            onNext={(data) => updateAndAdvance(data, 2)}
             initialData={projectData}
           />
         )}
         {currentStep === 2 && (
           <StepTwoAnalysis
-            onNext={(data) => {
-              setProjectData({ ...projectData, ...data })
-              setCurrentStep(3)
-            }}
+            onNext={(data) => updateAndAdvance(data, 3)}
             onBack={() => setCurrentStep(1)}
             initialData={projectData}
           />
         )}
         {currentStep === 3 && (
           <BriefingReview
-            onNext={(data) => {
-              setProjectData({ ...projectData, ...data })
-              setCurrentStep(4)
-            }}
+            onNext={(data) => updateAndAdvance(data, 4)}
             onBack={() => setCurrentStep(2)}
             initialData={projectData}
           />
         )}
         {currentStep === 4 && (
           <StepThree
-            onNext={(data) => {
-              setProjectData({ ...projectData, ...data })
-              setCurrentStep(5)
-            }}
+            onNext={(data) => updateAndAdvance(data, 5)}
             onBack={() => setCurrentStep(3)}
             initialData={projectData}
           />

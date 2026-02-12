@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowRight, ArrowLeft, Sparkles, Layout, MessageSquare, Award, Users, Phone } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
 
 interface StepThreeProps {
   onNext: (data: any) => void
@@ -23,28 +22,11 @@ interface WireframeSection {
 export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
   const hasExistingWireframe = initialData?.wireframe && initialData.wireframe.length > 0
 
-  const [progress, setProgress] = useState(0)
-  const [isGenerating, setIsGenerating] = useState(!hasExistingWireframe)
   const [sections, setSections] = useState<WireframeSection[]>(hasExistingWireframe ? initialData.wireframe : [])
 
   useEffect(() => {
-    if (hasExistingWireframe) {
-      return
-    }
-
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(timer)
-          setIsGenerating(false)
-          generateWireframe()
-          return 100
-        }
-        return prev + 10
-      })
-    }, 200)
-
-    return () => clearInterval(timer)
+    if (hasExistingWireframe) return
+    generateWireframe()
   }, [hasExistingWireframe])
 
   const generateWireframe = () => {
@@ -124,23 +106,20 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
     onNext({ wireframe: sections })
   }
 
-  if (isGenerating) {
+  if (sections.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold mb-2">Gerando Wireframe</h2>
-          <p className="text-muted-foreground">IA está criando a estrutura do seu site com instruções detalhadas</p>
+          <h2 className="text-2xl font-bold mb-2">Organizando a Estrutura do Site</h2>
+          <p className="text-muted-foreground">Montando as seções com base no seu briefing...</p>
         </div>
-
         <Card className="p-8 bg-secondary/20">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Sparkles className="h-8 w-8 text-primary animate-pulse" />
             </div>
             <div className="flex-1">
-              <p className="text-lg font-semibold mb-2">Analisando briefing estratégico...</p>
-              <Progress value={progress} className="h-2" />
-              <p className="text-sm text-muted-foreground mt-2">{progress}% completo</p>
+              <p className="text-lg font-semibold">Preparando seções...</p>
             </div>
           </div>
         </Card>
@@ -151,9 +130,9 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Wireframe do Site</h2>
+        <h2 className="text-2xl font-bold mb-2">Estrutura do Seu Site</h2>
         <p className="text-muted-foreground">
-          Revise e edite as instruções de cada seção. Clique no texto para editar.
+          Estas são as seções que o seu site terá. Clique no texto de qualquer seção para ajustar as instruções.
         </p>
       </div>
 

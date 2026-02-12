@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toast } from "sonner"
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -262,7 +263,8 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         console.error("Erro ao gerar briefing", err)
         if (cancelled) return
         setBriefing(generateBriefing())
-        setGenerationError(err?.message || "Erro ao gerar briefing. Usando modelo padrão.")
+        setGenerationError("A IA não respondeu. Usamos um modelo padrão — você pode editar tudo abaixo.")
+        toast.warning("Usamos dados padrão porque a IA não respondeu. Revise e ajuste os campos.")
       } finally {
         if (!cancelled) {
           setIsGenerating(false)
@@ -307,7 +309,7 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
       downloadBriefingPdf(briefing)
     } catch (error) {
       console.error("Error generating PDF:", error)
-      alert("Erro ao gerar PDF. Por favor, tente novamente.")
+      toast.error("Erro ao gerar PDF. Tente novamente.")
     }
   }
 
@@ -366,27 +368,27 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
   }
 
   const friendlyLabels: Record<string, string> = {
-    offering: "O que oferecemos",
-    sector: "Nosso setor",
-    differential: "Nosso diferencial",
-    targetAudience: "Nosso público",
-    audienceChallenges: "Desafios do público",
-    audienceAspirations: "Sonhos do público",
-    toneOfVoice: "Tom de voz",
-    strategicObjective: "Objetivo estratégico",
-    corePhilosophy: "Nossa filosofia",
-    deliveryModel: "Como entregamos",
-    socialProof: "Nossa credibilidade",
-    nonNegotiableValues: "Valores inegociáveis",
-    marketContext: "Contexto de mercado",
-    finalPromise: "Nossa promessa",
-    commonObjections: "Objeções comuns",
-    desiredEmotion: "Emoção desejada",
-    additionalService: "Serviço adicional",
-    averageTicket: "Investimento médio",
-    ctaPrimary: "CTA Principal",
-    ctaSecondary: "CTA Secundário",
-    ctaAlternative: "CTA Alternativo",
+    offering: "O que você oferece?",
+    sector: "Qual é o seu setor?",
+    differential: "O que te diferencia da concorrência?",
+    targetAudience: "Quem é o seu cliente ideal?",
+    audienceChallenges: "Quais problemas seus clientes enfrentam?",
+    audienceAspirations: "O que seus clientes desejam alcançar?",
+    toneOfVoice: "Como sua marca conversa com os clientes?",
+    strategicObjective: "Qual o principal objetivo do seu negócio?",
+    corePhilosophy: "Qual a filosofia do seu trabalho?",
+    deliveryModel: "Como funciona o seu atendimento?",
+    socialProof: "Por que as pessoas confiam em você?",
+    nonNegotiableValues: "O que você nunca abre mão?",
+    marketContext: "Como está o mercado hoje?",
+    finalPromise: "Qual resultado você garante ao cliente?",
+    commonObjections: "O que impede as pessoas de comprar de você?",
+    desiredEmotion: "Como o visitante deve se sentir no site?",
+    additionalService: "Você oferece algum serviço extra?",
+    averageTicket: "Qual o valor médio dos seus serviços?",
+    ctaPrimary: "Botão principal do site",
+    ctaSecondary: "Botão secundário",
+    ctaAlternative: "Botão alternativo",
   }
 
   const EditableField = ({
@@ -503,10 +505,10 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         <Card className="p-6 space-y-5 glow-border border-cyan-200/50">
           <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-600">
             <Briefcase className="h-5 w-5 text-cyan-600" />
-            Core Business
+            Sobre Seu Negócio
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Informações essenciais sobre o negócio, público-alvo e diferenciais competitivos.
+            O que você faz, para quem e o que te diferencia. Esses são os dados mais importantes.
           </p>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -538,10 +540,10 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         <Card className="p-6 space-y-5 glow-border border-orange-200/50">
           <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
             <Palette className="h-5 w-5 text-orange-600" />
-            Branding
+            Identidade da Sua Marca
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Identidade da marca, tom de voz, filosofia e valores que guiam o negócio.
+            Como sua marca se comunica, o que valoriza e como entrega seus serviços.
           </p>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -573,10 +575,10 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         <Card className="p-6 space-y-5 glow-border border-indigo-200/50">
           <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-600">
             <Megaphone className="h-5 w-5 text-indigo-600" />
-            Marketing
+            Estratégia de Vendas
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Contexto de mercado, posicionamento, objeções e estratégias de conversão.
+            Como está o mercado, o que você promete ao cliente e o que pode impedir a compra.
           </p>
 
           <div className="grid md:grid-cols-2 gap-5">

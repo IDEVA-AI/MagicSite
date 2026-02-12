@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card"
 import { ArrowLeft, Copy, Download, CheckCircle2, FileText, Save } from "lucide-react"
 import { createClient } from "@/utils/supabase/client"
 import { jsPDF } from "jspdf"
+import { toast } from "sonner"
+import { clearWizardDraft } from "./wizard"
 
 interface StepFourProps {
   onBack: () => void
@@ -453,14 +455,16 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
         if (briefingError) throw briefingError
       }
 
+      clearWizardDraft()
       setSaved(true)
+      toast.success("Projeto salvo com sucesso!")
       setTimeout(() => {
         router.push("/app")
       }, 1000)
 
     } catch (error) {
       console.error("Error saving project:", error)
-      alert("Erro ao salvar projeto. Tente novamente.")
+      toast.error("Erro ao salvar projeto. Tente novamente.")
     }
   }
 

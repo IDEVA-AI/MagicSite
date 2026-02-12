@@ -466,9 +466,9 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-3xl font-black gradient-text">Validação Estratégica</h2>
+        <h2 className="text-3xl font-black gradient-text">Análise do Seu Negócio</h2>
         <p className="text-muted-foreground font-medium">
-          Clique em qualquer texto para editar as informações geradas pela IA
+          A IA gerou essas informações com base nos seus dados. Clique em qualquer texto para ajustar.
         </p>
       </div>
 
@@ -480,8 +480,8 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
               <Target className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-base">Proposta de Valor</h3>
-              <p className="text-xs text-muted-foreground">Como você ajuda seu público</p>
+              <h3 className="font-bold text-base">Como você ajuda seus clientes?</h3>
+              <p className="text-xs text-muted-foreground">Resumo do valor que seu negócio entrega</p>
             </div>
           </div>
 
@@ -504,8 +504,8 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
                 <FileText className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <h3 className="font-bold text-base">Descrição Detalhada do Negócio</h3>
-                <p className="text-xs text-muted-foreground">Contexto completo da sua empresa</p>
+                <h3 className="font-bold text-base">Descrição Completa do Negócio</h3>
+                <p className="text-xs text-muted-foreground">Contexto detalhado sobre o que sua empresa faz e como atua</p>
               </div>
             </div>
             <Button
@@ -548,8 +548,8 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
               <Globe className="w-5 h-5 text-[oklch(0.55_0.1_160)]" />
             </div>
             <div>
-              <h3 className="font-bold text-base">Objetivo do Site</h3>
-              <p className="text-xs text-muted-foreground">Finalidade principal da presença digital</p>
+              <h3 className="font-bold text-base">O que seu site precisa fazer?</h3>
+              <p className="text-xs text-muted-foreground">Os principais objetivos da sua presença na internet</p>
             </div>
           </div>
 
