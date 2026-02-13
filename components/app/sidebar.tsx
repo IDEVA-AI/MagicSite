@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import {
   LayoutDashboard,
@@ -236,6 +236,7 @@ export function AppSidebar({
       {/* Mobile Menu */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0">
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <div className="relative h-full">
             <div className="absolute inset-0 tech-grid opacity-20" />
             <SidebarContent isMobile />

@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowRight, ArrowLeft, Sparkles, Layout, MessageSquare, Award, Users, Phone } from "lucide-react"
 
+const autoResize = (el: HTMLTextAreaElement | null) => {
+  if (!el) return
+  el.style.height = "auto"
+  el.style.height = el.scrollHeight + "px"
+}
+
 interface StepThreeProps {
   onNext: (data: any) => void
   onBack: () => void
@@ -172,15 +178,14 @@ export function StepThree({ onNext, onBack, initialData }: StepThreeProps) {
                       <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       <p className="text-xs font-semibold text-primary uppercase tracking-wide">Instruções da IA</p>
                     </div>
-                    <div
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) => handleInstructionChange(section.id, e.currentTarget.textContent || "")}
-                      onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
-                      className="text-sm leading-relaxed text-foreground/90 focus:outline-none focus:bg-background/50 focus:ring-2 focus:ring-primary/20 rounded p-2 hover:bg-background/30 transition-colors cursor-text"
-                    >
-                      {section.instructions}
-                    </div>
+                    <textarea
+                      defaultValue={section.instructions}
+                      onBlur={(e) => handleInstructionChange(section.id, e.target.value)}
+                      onInput={(e) => autoResize(e.currentTarget)}
+                      ref={(el) => autoResize(el)}
+                      rows={3}
+                      className="w-full text-sm leading-relaxed text-foreground/90 bg-transparent focus:outline-none focus:bg-background/50 focus:ring-2 focus:ring-primary/20 rounded p-2 hover:bg-background/30 transition-colors resize-none overflow-hidden"
+                    />
                   </div>
                 </div>
               </div>

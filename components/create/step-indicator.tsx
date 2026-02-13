@@ -26,7 +26,7 @@ export function StepIndicator({ steps, currentStep, onStepClick }: StepIndicator
                 }
               }}
               disabled={step.number > currentStep}
-              className={`flex h-14 w-14 items-center justify-center rounded-full border-2 transition-all duration-300 ${
+              className={`flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-full border-2 transition-all duration-300 ${
                 step.number < currentStep
                   ? "bg-primary border-primary text-primary-foreground hover:scale-110 cursor-pointer shadow-lg shadow-primary/30"
                   : step.number === currentStep
@@ -35,14 +35,14 @@ export function StepIndicator({ steps, currentStep, onStepClick }: StepIndicator
               }`}
             >
               {step.number < currentStep ? (
-                <Check className="h-6 w-6" />
+                <Check className="h-4 w-4 md:h-6 md:w-6" />
               ) : (
-                <span className="font-bold text-lg">{step.number}</span>
+                <span className="font-bold text-sm md:text-lg">{step.number}</span>
               )}
             </button>
-            <div className="mt-3 text-center">
+            <div className="mt-2 md:mt-3 text-center">
               <p
-                className={`text-sm font-bold ${
+                className={`text-[10px] md:text-sm font-bold ${
                   step.number <= currentStep ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
@@ -53,7 +53,7 @@ export function StepIndicator({ steps, currentStep, onStepClick }: StepIndicator
 
           {index < steps.length - 1 && (
             <div
-              className={`h-1 flex-1 mx-4 rounded-full transition-all duration-500 ${
+              className={`h-0.5 md:h-1 flex-1 mx-1 md:mx-4 rounded-full transition-all duration-500 ${
                 step.number < currentStep ? "bg-gradient-to-r from-primary to-primary/50" : "bg-border"
               }`}
             />

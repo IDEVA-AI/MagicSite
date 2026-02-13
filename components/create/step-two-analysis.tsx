@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, ArrowLeft, Sparkles, Target, FileText, Globe } from "lucide-react"
 
+const autoResize = (el: HTMLTextAreaElement | null) => {
+  if (!el) return
+  el.style.height = "auto"
+  el.style.height = el.scrollHeight + "px"
+}
+
 interface StepTwoAnalysisProps {
   onNext: (data: any) => void
   onBack: () => void
@@ -485,15 +491,14 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
             </div>
           </div>
 
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={(e) => setAnalysisData({ ...analysisData, valueProposition: e.currentTarget.textContent || "" })}
-            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
-            className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors"
-          >
-            {analysisData.valueProposition}
-          </div>
+          <textarea
+            defaultValue={analysisData.valueProposition}
+            onBlur={(e) => setAnalysisData((prev) => ({ ...prev, valueProposition: e.target.value }))}
+            onInput={(e) => autoResize(e.currentTarget)}
+            ref={(el) => autoResize(el)}
+            rows={2}
+            className="w-full text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary hover:bg-muted/70 transition-colors resize-none overflow-hidden"
+          />
         </div>
 
         {/* Detailed Description */}
@@ -530,15 +535,14 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
             </Button>
           </div>
 
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={(e) => setAnalysisData({ ...analysisData, detailedDescription: e.currentTarget.textContent || "" })}
-            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
-            className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors min-h-[120px]"
-          >
-            {analysisData.detailedDescription}
-          </div>
+          <textarea
+            defaultValue={analysisData.detailedDescription}
+            onBlur={(e) => setAnalysisData((prev) => ({ ...prev, detailedDescription: e.target.value }))}
+            onInput={(e) => autoResize(e.currentTarget)}
+            ref={(el) => autoResize(el)}
+            rows={4}
+            className="w-full text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary hover:bg-muted/70 transition-colors resize-none overflow-hidden min-h-[120px]"
+          />
         </div>
 
         {/* Site Objective */}
@@ -553,15 +557,14 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
             </div>
           </div>
 
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={(e) => setAnalysisData({ ...analysisData, siteObjective: e.currentTarget.textContent || "" })}
-            onPaste={(e) => { e.preventDefault(); const text = e.clipboardData.getData("text/plain"); document.execCommand("insertText", false, text) }}
-            className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-text hover:bg-muted/70 transition-colors min-h-[100px] whitespace-pre-wrap"
-          >
-            {analysisData.siteObjective}
-          </div>
+          <textarea
+            defaultValue={analysisData.siteObjective}
+            onBlur={(e) => setAnalysisData((prev) => ({ ...prev, siteObjective: e.target.value }))}
+            onInput={(e) => autoResize(e.currentTarget)}
+            ref={(el) => autoResize(el)}
+            rows={3}
+            className="w-full text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border border-border/50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary hover:bg-muted/70 transition-colors resize-none overflow-hidden min-h-[100px]"
+          />
         </div>
       </div>
 

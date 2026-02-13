@@ -10,6 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowRight, Building2, Phone, MapPin, FileText, Sparkles, Briefcase, Mail, Clock } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11)
+  if (digits.length <= 2) return digits.length ? `(${digits}` : ""
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 interface StepOneProps {
   onNext: (data: any) => void
   initialData?: any
@@ -37,6 +44,18 @@ export function StepOne({ onNext, initialData }: StepOneProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage("")
+
+    const phoneDigits = formData.phone.replace(/\D/g, "")
+    if (phoneDigits.length < 10) {
+      setErrorMessage("Informe um telefone válido com DDD. Ex: (11) 99999-0000")
+      return
+    }
+
+    if (formData.description.trim().length < 30) {
+      setErrorMessage("Descreva seu negócio com pelo menos 30 caracteres para uma análise mais precisa.")
+      return
+    }
+
     const resolvedSegment = formData.segment === "outro" ? formData.customSegment : formData.segment
     const segmentKey = formData.segment || "outro"
 
@@ -183,7 +202,7 @@ export function StepOne({ onNext, initialData }: StepOneProps) {
               type="tel"
               placeholder="(00) 00000-0000"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
               required
               className="h-11"
             />
@@ -289,10 +308,20 @@ export function StepOne({ onNext, initialData }: StepOneProps) {
           required
           className="resize-none"
         />
-        <p className="text-xs text-muted-foreground flex items-center gap-2">
-          <Sparkles className="h-3 w-3" />
-          Quanto mais detalhes, melhor será a análise estratégica
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <Sparkles className="h-3 w-3" />
+            Quanto mais detalhes, melhor será a análise estratégica
+          </p>
+          <p className={`text-xs font-medium ${
+            formData.description.length >= 80 ? "text-green-600" :
+            formData.description.length >= 30 ? "text-yellow-600" :
+            "text-muted-foreground"
+          }`}>
+            {formData.description.length}/80 caracteres
+            {formData.description.length < 30 && formData.description.length > 0 && " (mínimo 30)"}
+          </p>
+        </div>
       </div>
 
       <div className="flex justify-end pt-4">

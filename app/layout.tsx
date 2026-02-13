@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        <ThemeProvider defaultTheme="dark" storageKey="magicsite-theme">
+        <ThemeProvider>
           {children}
         </ThemeProvider>
         <Toaster position="top-right" richColors />
