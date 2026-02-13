@@ -38,45 +38,19 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4">Empresa</h3>
+            <h3 className="font-semibold mb-4">Contato</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/about" className="hover:text-foreground transition-colors">
-                  Sobre
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-foreground transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-foreground transition-colors">
-                  Contato
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold mb-4">Legal</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/privacy" className="hover:text-foreground transition-colors">
-                  Privacidade
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-foreground transition-colors">
-                  Termos
-                </Link>
+                <a href="mailto:contato@magicsite.com.br" className="hover:text-foreground transition-colors">
+                  contato@magicsite.com.br
+                </a>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="pt-8 border-t border-border/40 text-center text-sm text-muted-foreground">
-          <p>© 2025 MagicSite. Todos os direitos reservados.</p>
+          <p>© 2026 MagicSite. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>
