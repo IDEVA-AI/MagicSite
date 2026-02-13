@@ -21,10 +21,11 @@ import {
   DollarSign,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Progress } from "@/components/ui/progress"
 import { useCredits } from "@/hooks/use-credits"
+import { createClient } from "@/utils/supabase/client"
 
 const navigation = [
   {
@@ -73,8 +74,17 @@ export function AppSidebar({
   setMobileMenuOpen?: (open: boolean) => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const { credits, loading } = useCredits()
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    localStorage.removeItem("magicsite-wizard-draft")
+    localStorage.removeItem("magicsite-briefing-draft")
+    router.push("/login")
+  }
 
   const totalCredits = credits.total_credits ?? 0
   const usedCredits = credits.used_credits ?? 0
@@ -218,6 +228,7 @@ export function AppSidebar({
       <div className="border-t p-3">
         <Button
           variant="ghost"
+          onClick={handleLogout}
           className={cn(
             "w-full justify-start gap-3 text-muted-foreground hover:text-foreground font-bold",
             !isMobile && collapsed && "justify-center px-2",

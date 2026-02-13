@@ -12,8 +12,10 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Bell, Zap, User, Settings, LogOut, Menu } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 import { useCredits } from "@/hooks/use-credits"
+import { createClient } from "@/utils/supabase/client"
 
 export function AppHeader({
   onMenuClick,
@@ -22,7 +24,16 @@ export function AppHeader({
   onMenuClick?: () => void
   showMenuButton?: boolean
 }) {
+  const router = useRouter()
   const { credits, loading } = useCredits()
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    localStorage.removeItem("magicsite-wizard-draft")
+    localStorage.removeItem("magicsite-briefing-draft")
+    router.push("/login")
+  }
 
   const remainingLabel = useMemo(() => {
     if (loading) return "..."
@@ -110,7 +121,7 @@ export function AppHeader({
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600 cursor-pointer">
+            <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Sair
             </DropdownMenuItem>
