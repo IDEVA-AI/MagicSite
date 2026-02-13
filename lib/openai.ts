@@ -55,22 +55,29 @@ export async function callAgent({ promptName, userMessage, maxTokensOverride }: 
 
   // Retry with backoff (up to 2 retries)
   for (let attempt = 0; attempt <= 2; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
     try {
-      const response = await openai.chat.completions.create({
-        model,
-        temperature: prompt.temperature,
-        max_tokens: maxTokensOverride ?? prompt.max_tokens,
-        messages: [
-          { role: "system", content: prompt.system_prompt },
-          { role: "user", content: userMessage },
-        ],
-      })
+      const response = await openai.chat.completions.create(
+        {
+          model,
+          temperature: prompt.temperature,
+          max_tokens: maxTokensOverride ?? prompt.max_tokens,
+          messages: [
+            { role: "system", content: prompt.system_prompt },
+            { role: "user", content: userMessage },
+          ],
+        },
+        { signal: controller.signal },
+      )
 
+      clearTimeout(timeout)
       const content = response.choices[0]?.message?.content?.trim() || ""
       const usage = response.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
 
       return { content, usage }
     } catch (err: any) {
+      clearTimeout(timeout)
       lastError = err
       if (attempt < 2) {
         await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
