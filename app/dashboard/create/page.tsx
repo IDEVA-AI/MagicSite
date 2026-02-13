@@ -1,14 +1,5 @@
-import { CreateProjectWizard } from "@/components/create/wizard"
-import { DashboardHeader } from "@/components/dashboard/header"
+import { redirect } from "next/navigation"
 
 export default function CreateProjectPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
-
-      <main className="container mx-auto px-4 py-8">
-        <CreateProjectWizard />
-      </main>
-    </div>
-  )
+  redirect("/app/projects/new/wizard")
 }

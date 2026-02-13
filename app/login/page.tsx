@@ -52,7 +52,7 @@ function LoginForm() {
       // Refresh router to update server components
       router.refresh()
 
-      const redirect = searchParams.get("redirect") || "/dashboard"
+      const redirect = searchParams.get("redirect") || "/app"
       router.replace(redirect)
     } catch (error) {
       toast.error("Erro inesperado", {

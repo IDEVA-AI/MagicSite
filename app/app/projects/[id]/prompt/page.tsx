@@ -28,7 +28,7 @@ export default function ProjectPromptPage() {
 
       if (projectError || !project) {
         console.error("Error loading project:", projectError)
-        router.push("/dashboard")
+        router.push("/app")
         return
       }
 
@@ -136,7 +136,7 @@ export default function ProjectPromptPage() {
     <div className="min-h-screen gradient-bg tech-grid">
       <div className="container max-w-6xl mx-auto px-4 py-8 lg:px-8 lg:py-12">
         <StepFour 
-          onBack={() => router.push("/dashboard")} 
+          onBack={() => router.push("/app")} 
           projectData={{ ...projectData, id: projectId }} 
         />
       </div>
