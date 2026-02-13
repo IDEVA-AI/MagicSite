@@ -485,6 +485,8 @@ function LayoutThumbnail({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Layout ${label}`}
+      aria-pressed={selected}
       className="flex flex-col items-center gap-1 group cursor-pointer"
     >
       <div
