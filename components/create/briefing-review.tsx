@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { 
@@ -161,10 +162,39 @@ interface BriefingReviewProps {
   initialData?: any
 }
 
+const BRIEFING_DRAFT_KEY = "magicsite-briefing-draft"
+
+function loadBriefingDraft(): any | null {
+  try {
+    const raw = localStorage.getItem(BRIEFING_DRAFT_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function saveBriefingDraft(briefing: any) {
+  try {
+    localStorage.setItem(BRIEFING_DRAFT_KEY, JSON.stringify(briefing))
+  } catch {
+    // localStorage may be full
+  }
+}
+
+export function clearBriefingDraft() {
+  try {
+    localStorage.removeItem(BRIEFING_DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewProps) {
   const hasExistingBriefing = initialData?.briefing && Object.keys(initialData.briefing).length > 0
 
-  const [isGenerating, setIsGenerating] = useState(!hasExistingBriefing)
+  const hasDraft = !hasExistingBriefing && !!loadBriefingDraft()
+  const [isGenerating, setIsGenerating] = useState(!hasExistingBriefing && !hasDraft)
   const [progress, setProgress] = useState(0)
   const [generationError, setGenerationError] = useState<string | null>(null)
 
@@ -217,10 +247,13 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
     initialData?.segmentKey,
   ])
 
-  const [briefing, setBriefing] = useState(hasExistingBriefing ? initialData.briefing : generateBriefing())
+  const savedDraft = useRef(loadBriefingDraft())
+  const [briefing, setBriefing] = useState(
+    hasExistingBriefing ? initialData.briefing : savedDraft.current ?? generateBriefing(),
+  )
 
   useEffect(() => {
-    if (hasExistingBriefing) return
+    if (hasExistingBriefing || hasDraft) return
 
     let cancelled = false
     setIsGenerating(true)
@@ -263,7 +296,9 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         if (cancelled) return
         // Merge AI response with fallback defaults so missing fields get filled
         const aiBriefing = data.briefing || data
-        setBriefing({ ...generateBriefing(), ...aiBriefing })
+        const merged = { ...generateBriefing(), ...aiBriefing }
+        setBriefing(merged)
+        saveBriefingDraft(merged)
         setProgress(100)
       } catch (err: any) {
         console.error("Erro ao gerar briefing", err)
@@ -303,10 +338,15 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
   ])
 
   const handleFieldChange = (field: string, value: string) => {
-    setBriefing((prev: any) => ({ ...prev, [field]: value }))
+    setBriefing((prev: any) => {
+      const updated = { ...prev, [field]: value }
+      saveBriefingDraft(updated)
+      return updated
+    })
   }
 
   const handleNext = () => {
+    clearBriefingDraft()
     onNext({ briefing })
   }
 
@@ -317,6 +357,37 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
       console.error("Error generating PDF:", error)
       toast.error("Erro ao gerar PDF. Tente novamente.")
     }
+  }
+
+  const handleDownloadContextMd = () => {
+    const businessName = initialData?.businessName || "Empresa"
+
+    const section = (title: string, content: string | undefined) => {
+      if (!content?.trim()) return ""
+      return `## ${title}\n\n${content.trim()}\n\n`
+    }
+
+    const md = [
+      `# Contexto Adicional — ${businessName}\n\n`,
+      section("Serviços/Produtos Detalhados", briefing.services),
+      section("História da Marca", briefing.brandHistory),
+      section("Processo de Trabalho", briefing.workProcess),
+      section("Equipe", briefing.team),
+      section("Certificações e Diferenciais Técnicos", briefing.certifications),
+      section("Perguntas Frequentes (FAQ)", briefing.faq),
+    ]
+      .filter(Boolean)
+      .join("")
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "contexto-adicional.md"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const fieldIcons: Record<string, React.ReactNode> = {
@@ -397,6 +468,11 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
     ctaAlternative: "Botão alternativo",
   }
 
+  const requiredFields = new Set([
+    "offering", "sector", "differential", "targetAudience",
+    "toneOfVoice", "finalPromise", "ctaPrimary",
+  ])
+
   const EditableField = ({
     label,
     field,
@@ -411,12 +487,18 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
     const Icon = fieldIcons[field]
     const colorClass = fieldColors[field] || "text-foreground/90"
     const friendlyLabel = friendlyLabels[field] || label
+    const isRequired = requiredFields.has(field)
 
     return (
       <div className="space-y-2">
         <label className={`text-sm font-semibold flex items-center gap-2 ${colorClass}`}>
           {Icon}
           {friendlyLabel}
+          {isRequired ? (
+            <span className="text-red-500 text-xs">*</span>
+          ) : (
+            <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+          )}
         </label>
         <textarea
           defaultValue={value}
@@ -505,404 +587,412 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         </div>
       </div>
 
-      <div className="space-y-5">
+      <Accordion type="multiple" defaultValue={["business", "branding", "marketing", "colors", "contact", "context", "ctas"]} className="space-y-5">
         {/* Core Business */}
-        <Card className="p-6 space-y-5 glow-border border-cyan-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-600">
-            <Briefcase className="h-5 w-5 text-cyan-600" />
-            Sobre Seu Negócio
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            O que você faz, para quem e o que te diferencia. Esses são os dados mais importantes.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-5">
-            <EditableField label="O que eu ofereço" field="offering" value={briefing.offering} multiline />
-            <EditableField label="Setor de Atuação" field="sector" value={briefing.sector} multiline />
-            <EditableField
-              label="Diferencial Competitivo"
-              field="differential"
-              value={briefing.differential}
-              multiline
-            />
-            <EditableField label="Público-Alvo" field="targetAudience" value={briefing.targetAudience} multiline />
-            <EditableField
-              label="Desafios do Público"
-              field="audienceChallenges"
-              value={briefing.audienceChallenges}
-              multiline
-            />
-            <EditableField
-              label="Aspirações do Público"
-              field="audienceAspirations"
-              value={briefing.audienceAspirations}
-              multiline
-            />
-          </div>
-        </Card>
+        <AccordionItem value="business" className="border-0">
+          <Card className="p-6 glow-border border-cyan-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-600">
+                  <Briefcase className="h-5 w-5 text-cyan-600" />
+                  Sobre Seu Negócio
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  O que você faz, para quem e o que te diferencia.
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="grid md:grid-cols-2 gap-5">
+                <EditableField label="O que eu ofereço" field="offering" value={briefing.offering} multiline />
+                <EditableField label="Setor de Atuação" field="sector" value={briefing.sector} multiline />
+                <EditableField label="Diferencial Competitivo" field="differential" value={briefing.differential} multiline />
+                <EditableField label="Público-Alvo" field="targetAudience" value={briefing.targetAudience} multiline />
+                <EditableField label="Desafios do Público" field="audienceChallenges" value={briefing.audienceChallenges} multiline />
+                <EditableField label="Aspirações do Público" field="audienceAspirations" value={briefing.audienceAspirations} multiline />
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Branding */}
-        <Card className="p-6 space-y-5 glow-border border-orange-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
-            <Palette className="h-5 w-5 text-orange-600" />
-            Identidade da Sua Marca
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Como sua marca se comunica, o que valoriza e como entrega seus serviços.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-5">
-            <EditableField label="Tom de Voz" field="toneOfVoice" value={briefing.toneOfVoice} multiline />
-            <EditableField
-              label="Objetivo Estratégico"
-              field="strategicObjective"
-              value={briefing.strategicObjective}
-              multiline
-            />
-            <EditableField
-              label="Filosofia Central"
-              field="corePhilosophy"
-              value={briefing.corePhilosophy}
-              multiline
-            />
-            <EditableField label="Modelo de Entrega" field="deliveryModel" value={briefing.deliveryModel} multiline />
-            <EditableField label="Prova Social" field="socialProof" value={briefing.socialProof} multiline />
-            <EditableField
-              label="Valores Inegociáveis"
-              field="nonNegotiableValues"
-              value={briefing.nonNegotiableValues}
-              multiline
-            />
-          </div>
-        </Card>
+        <AccordionItem value="branding" className="border-0">
+          <Card className="p-6 glow-border border-orange-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
+                  <Palette className="h-5 w-5 text-orange-600" />
+                  Identidade da Sua Marca
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Como sua marca se comunica e o que valoriza.
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="grid md:grid-cols-2 gap-5">
+                <EditableField label="Tom de Voz" field="toneOfVoice" value={briefing.toneOfVoice} multiline />
+                <EditableField label="Objetivo Estratégico" field="strategicObjective" value={briefing.strategicObjective} multiline />
+                <EditableField label="Filosofia Central" field="corePhilosophy" value={briefing.corePhilosophy} multiline />
+                <EditableField label="Modelo de Entrega" field="deliveryModel" value={briefing.deliveryModel} multiline />
+                <EditableField label="Prova Social" field="socialProof" value={briefing.socialProof} multiline />
+                <EditableField label="Valores Inegociáveis" field="nonNegotiableValues" value={briefing.nonNegotiableValues} multiline />
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Marketing */}
-        <Card className="p-6 space-y-5 glow-border border-indigo-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-600">
-            <Megaphone className="h-5 w-5 text-indigo-600" />
-            Estratégia de Vendas
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Como está o mercado, o que você promete ao cliente e o que pode impedir a compra.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-5">
-            <EditableField label="Contexto de Mercado" field="marketContext" value={briefing.marketContext} multiline />
-            <EditableField label="Promessa Final" field="finalPromise" value={briefing.finalPromise} multiline />
-            <EditableField
-              label="Objeções Comuns"
-              field="commonObjections"
-              value={briefing.commonObjections}
-              multiline
-            />
-            <EditableField label="Emoção Desejada" field="desiredEmotion" value={briefing.desiredEmotion} multiline />
-            <EditableField
-              label="Serviço Adicional"
-              field="additionalService"
-              value={briefing.additionalService}
-              multiline
-            />
-            <EditableField label="Investimento Médio" field="averageTicket" value={briefing.averageTicket} multiline />
-          </div>
-        </Card>
+        <AccordionItem value="marketing" className="border-0">
+          <Card className="p-6 glow-border border-indigo-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-indigo-600">
+                  <Megaphone className="h-5 w-5 text-indigo-600" />
+                  Estratégia de Vendas
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Mercado, promessa ao cliente e objeções de compra.
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="grid md:grid-cols-2 gap-5">
+                <EditableField label="Contexto de Mercado" field="marketContext" value={briefing.marketContext} multiline />
+                <EditableField label="Promessa Final" field="finalPromise" value={briefing.finalPromise} multiline />
+                <EditableField label="Objeções Comuns" field="commonObjections" value={briefing.commonObjections} multiline />
+                <EditableField label="Emoção Desejada" field="desiredEmotion" value={briefing.desiredEmotion} multiline />
+                <EditableField label="Serviço Adicional" field="additionalService" value={briefing.additionalService} multiline />
+                <EditableField label="Investimento Médio" field="averageTicket" value={briefing.averageTicket} multiline />
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Paleta de Cores */}
-        <Card className="p-6 space-y-5 glow-border border-rose-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-rose-600">
-            <Palette className="h-5 w-5 text-rose-600" />
-            Paleta de Cores
-          </h3>
-
-          <Alert className="bg-primary/5 border-primary/20">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertTitle className="text-sm font-semibold text-foreground mb-2">
-              Como cada cor é utilizada no site gerado:
-            </AlertTitle>
-            <AlertDescription className="text-sm text-muted-foreground space-y-1.5">
-              <p>
-                <strong className="text-foreground">Cor Primária:</strong> Utilizada nos botões principais (CTAs), links importantes, 
-                destaques de navegação, títulos principais e elementos de destaque que precisam chamar atenção.
-              </p>
-              <p>
-                <strong className="text-foreground">Cor Secundária:</strong> Usada em botões secundários, elementos complementares, 
-                hover states, badges, e para criar contraste visual com a cor primária.
-              </p>
-            </AlertDescription>
-          </Alert>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground/90">Cor Primária</label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={briefing.primaryColor}
-                  onChange={(e) => handleFieldChange("primaryColor", e.target.value)}
-                  className="w-16 h-10 p-1 cursor-pointer"
-                />
-                <Input
-                  value={briefing.primaryColor}
-                  onChange={(e) => handleFieldChange("primaryColor", e.target.value)}
-                  className="flex-1"
-                />
+        <AccordionItem value="colors" className="border-0">
+          <Card className="p-6 glow-border border-rose-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-rose-600">
+                  <Palette className="h-5 w-5 text-rose-600" />
+                  Paleta de Cores
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Cores primária, secundária e tema do site.
+                </p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground/90">Cor Secundária</label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={briefing.secondaryColor}
-                  onChange={(e) => handleFieldChange("secondaryColor", e.target.value)}
-                  className="w-16 h-10 p-1 cursor-pointer"
-                />
-                <Input
-                  value={briefing.secondaryColor}
-                  onChange={(e) => handleFieldChange("secondaryColor", e.target.value)}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
-                <Sun className="h-4 w-4" />
-                Tema do Site
-              </label>
-              <Select
-                value={briefing.theme || "light"}
-                onValueChange={(value) => handleFieldChange("theme", value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione o tema" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="light" className="flex items-center gap-2">
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <Alert className="bg-primary/5 border-primary/20 mb-5">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-sm font-semibold text-foreground mb-2">
+                  Como cada cor é utilizada no site gerado:
+                </AlertTitle>
+                <AlertDescription className="text-sm text-muted-foreground space-y-1.5">
+                  <p>
+                    <strong className="text-foreground">Cor Primária:</strong> Botões principais (CTAs), links, destaques de navegação e títulos.
+                  </p>
+                  <p>
+                    <strong className="text-foreground">Cor Secundária:</strong> Botões secundários, elementos complementares e hover states.
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground/90">Cor Primária</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={briefing.primaryColor}
+                      onChange={(e) => handleFieldChange("primaryColor", e.target.value)}
+                      className="w-16 h-10 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={briefing.primaryColor}
+                      onChange={(e) => handleFieldChange("primaryColor", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground/90">Cor Secundária</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={briefing.secondaryColor}
+                      onChange={(e) => handleFieldChange("secondaryColor", e.target.value)}
+                      className="w-16 h-10 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={briefing.secondaryColor}
+                      onChange={(e) => handleFieldChange("secondaryColor", e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
                     <Sun className="h-4 w-4" />
-                    <span>Claro (Light)</span>
-                  </SelectItem>
-                  <SelectItem value="dark" className="flex items-center gap-2">
-                    <Moon className="h-4 w-4" />
-                    <span>Escuro (Dark)</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </Card>
+                    Tema do Site
+                  </label>
+                  <Select
+                    value={briefing.theme || "light"}
+                    onValueChange={(value) => handleFieldChange("theme", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o tema" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Claro (Light)</SelectItem>
+                      <SelectItem value="dark">Escuro (Dark)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Informações de Contato */}
-        <Card className="p-6 space-y-5 glow-border border-emerald-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-600">
-            <Phone className="h-5 w-5 text-emerald-600" />
-            Informações de Contato
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Dados de contato que serão utilizados no site gerado.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {/* Primeira linha: 3 campos */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
-                <Phone className="h-4 w-4" />
-                WhatsApp
-              </label>
-              <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
-                {initialData?.phone || "Não informado"}
+        <AccordionItem value="contact" className="border-0">
+          <Card className="p-6 glow-border border-emerald-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-600">
+                  <Phone className="h-5 w-5 text-emerald-600" />
+                  Informações de Contato
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Dados de contato utilizados no site gerado.
+                </p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
-                <Mail className="h-4 w-4" />
-                E-mail
-              </label>
-              <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
-                {initialData?.email || "Não informado"}
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
+                    <Phone className="h-4 w-4" />
+                    WhatsApp
+                  </label>
+                  <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
+                    {initialData?.phone || "Não informado"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
+                    <Mail className="h-4 w-4" />
+                    E-mail
+                  </label>
+                  <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
+                    {initialData?.email || "Não informado"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
+                    <MapPin className="h-4 w-4" />
+                    Localização
+                  </label>
+                  <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
+                    {initialData?.address || "Não informado"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
+                    <FileText className="h-4 w-4" />
+                    Instagram
+                  </label>
+                  <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
+                    {initialData?.instagram || "Não informado"}
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
+                    <Clock className="h-4 w-4" />
+                    Horário de Funcionamento
+                  </label>
+                  <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
+                    {initialData?.businessHours || "Não informado"}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
-                <MapPin className="h-4 w-4" />
-                Localização
-              </label>
-              <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
-                {initialData?.address || "Não informado"}
-              </div>
-            </div>
-            {/* Segunda linha: Instagram e Horário */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
-                <FileText className="h-4 w-4" />
-                Instagram
-              </label>
-              <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
-                {initialData?.instagram || "Não informado"}
-              </div>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-emerald-600">
-                <Clock className="h-4 w-4" />
-                Horário de Funcionamento
-              </label>
-              <div className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm">
-                {initialData?.businessHours || "Não informado"}
-              </div>
-            </div>
-          </div>
-        </Card>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Contexto Adicional */}
-        <Card className="p-6 space-y-5 glow-border border-blue-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-blue-600">
-            <BookOpen className="h-5 w-5 text-blue-600" />
-            Contexto Adicional
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Informações complementares que enriquecerão o conteúdo do site gerado. Estes dados serão incluídos no PDF de contexto e no prompt para a IA desenvolvedora.
-          </p>
-
-          <div className="space-y-5">
-            {/* Serviços/Produtos */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                <List className="h-4 w-4" />
-                Serviços/Produtos Detalhados *
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Liste todos os serviços ou produtos oferecidos, com descrições breves. Use uma linha por serviço ou organize em categorias.
-              </p>
-              <textarea
-                defaultValue={briefing.services || ""}
-                onBlur={(e) => handleFieldChange("services", e.target.value)}
-                onInput={(e) => autoResize(e.currentTarget)}
-                ref={(el) => autoResize(el)}
-                rows={4}
-                placeholder={"Ex: Consultoria Empresarial - Análise estratégica e planejamento...\nGestão de Projetos - Acompanhamento e execução...\nTreinamento - Capacitação de equipes..."}
-                className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[120px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-              />
-            </div>
-
-            {/* História da Marca */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                <BookOpen className="h-4 w-4" />
-                História da Marca
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Como a empresa começou, missão, visão, valores e o que torna a marca única. (Opcional mas recomendado)
-              </p>
-              <textarea
-                defaultValue={briefing.brandHistory || ""}
-                onBlur={(e) => handleFieldChange("brandHistory", e.target.value)}
-                onInput={(e) => autoResize(e.currentTarget)}
-                ref={(el) => autoResize(el)}
-                rows={3}
-                placeholder="Conte a história da sua marca, quando começou, qual foi a motivação, missão e valores..."
-                className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-              />
-            </div>
-
-            {/* Processo de Trabalho */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                <Settings className="h-4 w-4" />
-                Processo de Trabalho
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Como funciona o atendimento, etapas do processo, metodologia utilizada. (Opcional mas recomendado)
-              </p>
-              <textarea
-                defaultValue={briefing.workProcess || ""}
-                onBlur={(e) => handleFieldChange("workProcess", e.target.value)}
-                onInput={(e) => autoResize(e.currentTarget)}
-                ref={(el) => autoResize(el)}
-                rows={3}
-                placeholder="Descreva como funciona seu processo: etapas, metodologia, tempo de entrega..."
-                className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-              />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              {/* Equipe */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                  <Users className="h-4 w-4" />
-                  Equipe
-                </label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Informações sobre a equipe, profissionais principais, experiência. (Opcional)
+        <AccordionItem value="context" className="border-0">
+          <Card className="p-6 glow-border border-blue-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-blue-600">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                  Contexto Adicional
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Informações complementares que enriquecerão o conteúdo do site.
                 </p>
-                <textarea
-                  defaultValue={briefing.team || ""}
-                  onBlur={(e) => handleFieldChange("team", e.target.value)}
-                  onInput={(e) => autoResize(e.currentTarget)}
-                  ref={(el) => autoResize(el)}
-                  rows={2}
-                  placeholder="Descreva sua equipe, profissionais principais, experiência..."
-                  className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-                />
               </div>
-
-              {/* Certificações */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                  <AwardIcon className="h-4 w-4" />
-                  Certificações e Diferenciais Técnicos
-                </label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Certificações, prêmios, diferenciais técnicos, tecnologias utilizadas. (Opcional)
-                </p>
-                <textarea
-                  defaultValue={briefing.certifications || ""}
-                  onBlur={(e) => handleFieldChange("certifications", e.target.value)}
-                  onInput={(e) => autoResize(e.currentTarget)}
-                  ref={(el) => autoResize(el)}
-                  rows={2}
-                  placeholder="Liste certificações, prêmios, tecnologias, diferenciais técnicos..."
-                  className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-                />
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="flex justify-end mb-4">
+                <Button variant="outline" size="sm" onClick={handleDownloadContextMd}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar Contexto (.md)
+                </Button>
               </div>
-            </div>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                    <List className="h-4 w-4" />
+                    Serviços/Produtos Detalhados
+                    <span className="text-red-500 text-xs">*</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Liste todos os serviços ou produtos oferecidos, com descrições breves.
+                  </p>
+                  <textarea
+                    defaultValue={briefing.services || ""}
+                    onBlur={(e) => handleFieldChange("services", e.target.value)}
+                    onInput={(e) => autoResize(e.currentTarget)}
+                    ref={(el) => autoResize(el)}
+                    rows={4}
+                    placeholder={"Ex: Consultoria Empresarial - Análise estratégica e planejamento...\nGestão de Projetos - Acompanhamento e execução...\nTreinamento - Capacitação de equipes..."}
+                    className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[120px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                  />
+                </div>
 
-            {/* FAQ */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
-                <HelpCircle className="h-4 w-4" />
-                Perguntas Frequentes (FAQ)
-              </label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Perguntas e respostas comuns dos clientes. Formato: Pergunta - Resposta (uma por linha). (Opcional)
-              </p>
-              <textarea
-                defaultValue={briefing.faq || ""}
-                onBlur={(e) => handleFieldChange("faq", e.target.value)}
-                onInput={(e) => autoResize(e.currentTarget)}
-                ref={(el) => autoResize(el)}
-                rows={3}
-                placeholder={"P: Qual o prazo de entrega?\nR: O prazo varia conforme o projeto...\n\nP: Como funciona o pagamento?\nR: Aceitamos diversas formas..."}
-                className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
-              />
-            </div>
-          </div>
-        </Card>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                    <BookOpen className="h-4 w-4" />
+                    História da Marca
+                    <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Como a empresa começou, missão, visão, valores e o que torna a marca única.
+                  </p>
+                  <textarea
+                    defaultValue={briefing.brandHistory || ""}
+                    onBlur={(e) => handleFieldChange("brandHistory", e.target.value)}
+                    onInput={(e) => autoResize(e.currentTarget)}
+                    ref={(el) => autoResize(el)}
+                    rows={3}
+                    placeholder="Conte a história da sua marca, quando começou, qual foi a motivação, missão e valores..."
+                    className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                    <Settings className="h-4 w-4" />
+                    Processo de Trabalho
+                    <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Como funciona o atendimento, etapas do processo, metodologia utilizada.
+                  </p>
+                  <textarea
+                    defaultValue={briefing.workProcess || ""}
+                    onBlur={(e) => handleFieldChange("workProcess", e.target.value)}
+                    onInput={(e) => autoResize(e.currentTarget)}
+                    ref={(el) => autoResize(el)}
+                    rows={3}
+                    placeholder="Descreva como funciona seu processo: etapas, metodologia, tempo de entrega..."
+                    className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                      <Users className="h-4 w-4" />
+                      Equipe
+                      <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Informações sobre a equipe, profissionais principais, experiência.
+                    </p>
+                    <textarea
+                      defaultValue={briefing.team || ""}
+                      onBlur={(e) => handleFieldChange("team", e.target.value)}
+                      onInput={(e) => autoResize(e.currentTarget)}
+                      ref={(el) => autoResize(el)}
+                      rows={2}
+                      placeholder="Descreva sua equipe, profissionais principais, experiência..."
+                      className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                      <AwardIcon className="h-4 w-4" />
+                      Certificações e Diferenciais Técnicos
+                      <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Certificações, prêmios, diferenciais técnicos, tecnologias utilizadas.
+                    </p>
+                    <textarea
+                      defaultValue={briefing.certifications || ""}
+                      onBlur={(e) => handleFieldChange("certifications", e.target.value)}
+                      onInput={(e) => autoResize(e.currentTarget)}
+                      ref={(el) => autoResize(el)}
+                      rows={2}
+                      placeholder="Liste certificações, prêmios, tecnologias, diferenciais técnicos..."
+                      className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[80px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-blue-600">
+                    <HelpCircle className="h-4 w-4" />
+                    Perguntas Frequentes (FAQ)
+                    <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Perguntas e respostas comuns dos clientes. Formato: Pergunta - Resposta (uma por linha).
+                  </p>
+                  <textarea
+                    defaultValue={briefing.faq || ""}
+                    onBlur={(e) => handleFieldChange("faq", e.target.value)}
+                    onInput={(e) => autoResize(e.currentTarget)}
+                    ref={(el) => autoResize(el)}
+                    rows={3}
+                    placeholder={"P: Qual o prazo de entrega?\nR: O prazo varia conforme o projeto...\n\nP: Como funciona o pagamento?\nR: Aceitamos diversas formas..."}
+                    className="w-full rounded-md border border-border/40 bg-background/50 px-3 py-2 text-sm min-h-[100px] transition-all resize-none overflow-hidden hover:bg-primary/5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+                  />
+                </div>
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
         {/* Chamadas para Ação */}
-        <Card className="p-6 space-y-5 glow-border border-orange-200/50">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
-            <MessageSquare className="h-5 w-5 text-orange-600" />
-            Chamadas para Ação (CTAs)
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Textos dos botões e links de ação que guiarão os visitantes do site.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            <EditableField label="CTA Principal" field="ctaPrimary" value={briefing.ctaPrimary} />
-            <EditableField label="CTA Secundário" field="ctaSecondary" value={briefing.ctaSecondary} />
-            <EditableField label="CTA Alternativo" field="ctaAlternative" value={briefing.ctaAlternative} />
-          </div>
-        </Card>
-      </div>
+        <AccordionItem value="ctas" className="border-0">
+          <Card className="p-6 glow-border border-orange-200/50">
+            <AccordionTrigger className="py-0 hover:no-underline">
+              <div>
+                <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
+                  <MessageSquare className="h-5 w-5 text-orange-600" />
+                  Chamadas para Ação (CTAs)
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 text-left">
+                  Textos dos botões que guiarão os visitantes.
+                </p>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-5 pb-0">
+              <div className="grid md:grid-cols-3 gap-5">
+                <EditableField label="CTA Principal" field="ctaPrimary" value={briefing.ctaPrimary} />
+                <EditableField label="CTA Secundário" field="ctaSecondary" value={briefing.ctaSecondary} />
+                <EditableField label="CTA Alternativo" field="ctaAlternative" value={briefing.ctaAlternative} />
+              </div>
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
+      </Accordion>
 
       <div className="flex items-center justify-between pt-6 border-t border-border/40">
         <Button variant="outline" onClick={onBack}>

@@ -94,6 +94,7 @@ export function CreateProjectWizard() {
 
   const handleDismissDraft = useCallback(() => {
     clearWizardDraft()
+    try { localStorage.removeItem("magicsite-briefing-draft") } catch {}
     setCurrentStep(1)
     setProjectData({})
     setShowDraftBanner(false)
