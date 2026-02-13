@@ -54,10 +54,49 @@ export function StepFour({ onBack, projectData = {} }: StepFourProps) {
   const b = projectData.briefing || {}
 
   const generateCompletePrompt = () => {
+    const layoutDescriptions: Record<string, string> = {
+      // Hero
+      "hero-centered": "Hero centralizado — título impactante + subtítulo + CTA centralizado sobre fundo/imagem de destaque em largura total",
+      "hero-background": "Hero com imagem de fundo fullscreen — foto de fundo com overlay escuro, título + subtítulo + CTA centralizados sobre a imagem",
+      "hero-split": "Hero dividido — texto e CTA alinhados à esquerda, imagem/ilustração grande à direita",
+      "hero-video": "Hero com vídeo de fundo — vídeo fullscreen com overlay escuro e texto centralizado em destaque",
+      "hero-slider": "Hero em carrossel/slider — múltiplos slides com navegação por setas laterais e indicadores de posição",
+      // About
+      "about-image": "Seção Sobre dividida — texto descritivo à esquerda com foto profissional da equipe/fundador à direita",
+      "about-timeline": "Seção Sobre em linha do tempo — marcos cronológicos da história da empresa em timeline vertical",
+      "about-numbers": "Seção Sobre com números de impacto — contadores grandes (anos, clientes, projetos) + texto descritivo abaixo",
+      "about-team": "Seção Sobre focada na equipe — grid de cards com foto, nome e cargo de cada membro",
+      // Services
+      "services-cards": "Serviços em grade de cards — 3 colunas com cards contendo ícone, título, descrição e CTA",
+      "services-icons": "Serviços com ícones proeminentes — ícones grandes centralizados acima de título e descrição em cada card",
+      "services-list": "Serviços em lista detalhada — itens empilhados verticalmente com ícone lateral, título e descrição expandida",
+      "services-tabs": "Serviços em abas/tabs — navegação por abas no topo, conteúdo detalhado de cada serviço ao selecionar a aba",
+      // Differentials
+      "diff-grid": "Diferenciais em grade 2x2 — ícones com texto curto organizados em grid de 4-6 itens",
+      "diff-comparison": "Diferenciais em tabela comparativa — duas colunas comparando 'nós' vs 'concorrência' com checkmarks",
+      "diff-numbers": "Diferenciais com números de impacto — estatísticas grandes e chamativas (%, +, x) com descrição curta",
+      "diff-horizontal": "Diferenciais em lista horizontal — cards horizontais empilhados com ícone à esquerda e texto à direita",
+      // Testimonials
+      "test-carousel": "Depoimentos em carrossel — um depoimento por vez com navegação por setas e indicadores",
+      "test-grid": "Depoimentos em grade de cards — 3 cards lado a lado com aspas, texto, foto e nome",
+      "test-list": "Depoimentos em lista — empilhados verticalmente com foto circular, nome e texto do depoimento",
+      "test-featured": "Depoimentos com destaque — um depoimento grande em destaque + grid menor com os demais",
+      // CTA
+      "cta-banner": "CTA em banner centralizado — fundo colorido com título persuasivo + botão de ação central",
+      "cta-form": "CTA com formulário — texto persuasivo à esquerda + formulário de contato compacto à direita",
+      "cta-split": "CTA dividido — imagem inspiradora à esquerda + texto e botões de conversão à direita",
+      "cta-whatsapp": "CTA com WhatsApp — texto persuasivo centralizado + botão de WhatsApp grande e proeminente",
+      // Legacy fallbacks
+      full: "Layout largura total (conteúdo centralizado)",
+      split: "Layout dividido (duas colunas)",
+      grid: "Layout em grade de cards",
+      list: "Layout em lista vertical",
+    }
+
     const wireframeSections = projectData.wireframe
       ?.map(
         (section: any, index: number) =>
-          `### ${index + 1}. ${section.title}\n${section.instructions}`,
+          `### ${index + 1}. ${section.title}\n**Layout:** ${layoutDescriptions[section.layout] || section.layout}\n${section.instructions}`,
       )
       .join("\n\n") || "Estrutura não definida"
 
