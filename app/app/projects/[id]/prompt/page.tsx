@@ -42,7 +42,7 @@ export default function ProjectPromptPage() {
       // Montar projectData completo
       const resolvedSegment = project.custom_segment_name || project.segment || "Segmento não informado"
       
-      const fullProjectData = {
+      const fullProjectData: Record<string, unknown> = {
         businessName: project.company_name || project.name,
         phone: project.whatsapp || "",
         email: project.email || "",

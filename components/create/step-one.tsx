@@ -98,6 +98,14 @@ export function StepOne({ onNext, initialData }: StepOneProps) {
         }),
       })
 
+      if (response.status === 402) {
+        const payload = await response.json().catch(() => ({}))
+        setErrorMessage(payload.error || "Créditos insuficientes.")
+        const { dispatchCreditsChanged } = await import("@/lib/credits-event")
+        dispatchCreditsChanged()
+        return
+      }
+
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.error || "Não foi possível gerar a descrição. Tente novamente.")
@@ -105,8 +113,11 @@ export function StepOne({ onNext, initialData }: StepOneProps) {
 
       const data = await response.json()
       setFormData((prev) => ({ ...prev, description: data.description }))
-    } catch (err: any) {
-      setErrorMessage(err?.message || "Erro ao gerar descrição com a IA.")
+      const { dispatchCreditsChanged } = await import("@/lib/credits-event")
+      dispatchCreditsChanged()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao gerar descrição com a IA."
+      setErrorMessage(message)
     } finally {
       setIsAiHelping(false)
     }

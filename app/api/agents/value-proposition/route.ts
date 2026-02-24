@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { callAgent, logGeneration } from "@/lib/openai"
+import { checkAndDeductCredits, refundCredits, CREDIT_COSTS } from "@/lib/credits"
 
 export async function POST(request: Request) {
   const startTime = Date.now()
@@ -21,21 +22,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nome do negócio é obrigatório." }, { status: 400 })
     }
 
+    // Credit check
+    const cost = CREDIT_COSTS["value-proposition"]
+    const creditResult = await checkAndDeductCredits(
+      user.id, cost, "value-proposition", "Geração de proposta de valor"
+    )
+    if (!creditResult.success) {
+      return NextResponse.json({ error: creditResult.error }, { status: 402 })
+    }
+
     const userMessage = `Meu negócio é ${businessName}, do segmento de ${resolvedSegment}, localizado em ${location || "não informado"}. ${description || ""}`
 
-    const { content, usage } = await callAgent({
-      promptName: "value_proposition_v1",
-      userMessage,
-    })
+    let content: string
+    let model: string
+    let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
 
-    // The response should be a single sentence - use it directly
+    try {
+      const result = await callAgent({
+        promptName: "value_proposition_v1",
+        userMessage,
+      })
+      content = result.content
+      model = result.model
+      usage = result.usage
+    } catch (aiError) {
+      await refundCredits(user.id, cost, "Reembolso: falha na proposta de valor")
+      throw aiError
+    }
+
     const valueProposition = content.replace(/^["']|["']$/g, "").trim()
 
     await logGeneration({
       generationType: "value_proposition",
       status: "success",
-      provider: "openai",
-      model: "gpt-4o-mini",
+      provider: "openrouter",
+      model,
       promptTokens: usage.prompt_tokens,
       completionTokens: usage.completion_tokens,
       totalTokens: usage.total_tokens,
@@ -43,19 +64,20 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ valueProposition })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
     console.error("Error in value-proposition:", err)
 
     await logGeneration({
       generationType: "value_proposition",
       status: "failed",
-      provider: "openai",
-      model: "gpt-4o-mini",
+      provider: "openrouter",
+      model: "google/gemini-3-flash-preview",
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
       durationMs: Date.now() - startTime,
-      errorMessage: err?.message,
+      errorMessage: message,
     })
 
     return NextResponse.json(

@@ -7,6 +7,17 @@ import { StepTwoAnalysis } from "./step-two-analysis"
 import { BriefingReview } from "./briefing-review"
 import { StepThree } from "./step-three"
 import { StepFour } from "./step-four"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const STORAGE_KEY = "magicsite-wizard-draft"
 
@@ -141,12 +152,32 @@ export function CreateProjectWizard() {
             >
               Continuar
             </button>
-            <button
-              onClick={handleDismissDraft}
-              className="px-4 py-2 text-sm font-semibold rounded-lg border border-border hover:bg-muted transition-colors"
-            >
-              Começar novo
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="px-4 py-2 text-sm font-semibold rounded-lg border border-border hover:bg-muted transition-colors"
+                >
+                  Começar novo
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Descartar projeto em andamento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Todas as informações preenchidas serão perdidas. Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDismissDraft}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Sim, descartar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       )}

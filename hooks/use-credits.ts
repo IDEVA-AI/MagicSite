@@ -42,9 +42,10 @@ export function useCredits() {
         used_credits: Number(data.used_credits) || 0,
         remaining_credits: Number(data.remaining_credits) || 0,
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (cancelled.current) return
-      setError(err?.message || "Não foi possível carregar os créditos.")
+      const message = err instanceof Error ? err.message : "Não foi possível carregar os créditos."
+      setError(message)
       setCredits({ total_credits: 0, used_credits: 0, remaining_credits: 0 })
     } finally {
       if (!cancelled.current) {
@@ -56,8 +57,14 @@ export function useCredits() {
   useEffect(() => {
     cancelled.current = false
     loadCredits()
+
+    // Listen for credit changes from other components
+    const handler = () => loadCredits()
+    window.addEventListener("magicsite:credits-changed", handler)
+
     return () => {
       cancelled.current = true
+      window.removeEventListener("magicsite:credits-changed", handler)
     }
   }, [loadCredits])
 

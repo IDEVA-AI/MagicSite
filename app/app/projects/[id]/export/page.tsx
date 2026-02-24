@@ -1,82 +1,71 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, CheckCircle2, Copy, Download, FileText } from "lucide-react"
-
-type Project = {
-  id: string
-  name: string
-  segment: string
-  status: "completed" | "in-progress"
-  phase: number
-  createdAt: string
-  creditsUsed: number
-  data?: any
-}
+import { ArrowLeft, CheckCircle2, Copy, Download, FileText, Loader2 } from "lucide-react"
+import { useProject } from "@/hooks/use-project"
 
 export default function ProjectExportPage() {
   const params = useParams()
   const router = useRouter()
-  const [project, setProject] = useState<Project | null>(null)
-  const [copied, setCopied] = useState(false)
-  const storageKey = "magicsite-projects"
   const projectId = params?.id as string
+  const { project, loading, error } = useProject(projectId)
+  const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (!projectId || typeof window === "undefined") return
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "[]") as Project[]
-    const found = saved.find((p) => p.id === projectId)
-    if (found) {
-      setProject(found)
-      return
-    }
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Carregando projeto...</p>
+        </div>
+      </div>
+    )
+  }
 
-    setProject({
-      id: projectId,
-      name: "Projeto em preparação",
-      segment: "Segmento não informado",
-      status: "in-progress",
-      phase: 1,
-      createdAt: new Date().toISOString(),
-      creditsUsed: 0,
-      data: {},
-    })
-  }, [projectId])
+  if (error || !project) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-destructive">{error || "Projeto não encontrado"}</p>
+          <Button variant="outline" onClick={() => router.push("/app/projects")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar aos Projetos
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
-  const strategy = useMemo(() => project?.data || {}, [project])
+  const briefing = project.briefing || {}
 
   const resolvedDescription =
-    strategy.detailedDescription ||
-    strategy.businessDescription ||
-    strategy.briefing?.offering ||
-    strategy.description ||
-    "Descrição não definida"
+    project.businessDescription || briefing.offering || "Descrição não definida"
 
   const resolvedValueProposition =
-    strategy.valueProposition || strategy.briefing?.finalPromise || "Proposta de valor não definida"
+    project.businessProposal || briefing.finalPromise || "Proposta de valor não definida"
 
   const resolvedSiteObjective =
-    strategy.siteObjective || strategy.briefing?.strategicObjective || "Objetivo não definido"
+    project.siteObjectives || briefing.strategicObjective || "Objetivo não definido"
 
   const resolvedColors = {
-    primary: strategy.briefing?.primaryColor || strategy.colors?.primary || "#1D4ED8",
-    secondary: strategy.briefing?.secondaryColor || strategy.colors?.secondary || "#ff8800",
-    accent: strategy.briefing?.accentColor || strategy.colors?.accent || "#1D4ED8",
+    primary: briefing.primaryColor || briefing.colors?.primary || "#1D4ED8",
+    secondary: briefing.secondaryColor || briefing.colors?.secondary || "#ff8800",
+    accent: briefing.accentColor || briefing.colors?.accent || "#1D4ED8",
   }
 
   const resolvedCtas = {
-    primary: strategy.briefing?.ctaPrimary || strategy.ctas?.primary || "Entre em Contato",
-    secondary: strategy.briefing?.ctaSecondary || strategy.ctas?.secondary || "Saiba Mais",
-    alternative: strategy.briefing?.ctaAlternative || strategy.ctas?.alternative || "Fale Conosco",
+    primary: briefing.ctaPrimary || briefing.ctas?.primary || "Entre em Contato",
+    secondary: briefing.ctaSecondary || briefing.ctas?.secondary || "Saiba Mais",
+    alternative: briefing.ctaAlternative || briefing.ctas?.alternative || "Fale Conosco",
   }
 
-  const resolvedWireframe = strategy.wireframe || []
+  const resolvedWireframe = project.wireframe || []
 
   const generateCompletePrompt = () => {
-    return `Crie um site profissional completo para ${project?.name || "meu negócio"}.
+    return `Crie um site profissional completo para ${project.companyName}.
 
 ## PROPOSTA DE VALOR
 ${resolvedValueProposition}
@@ -88,8 +77,9 @@ ${resolvedDescription}
 ${resolvedSiteObjective}
 
 ## INFORMAÇÕES DE CONTATO
-- WhatsApp: ${strategy.phone || "Não informado"}
-- Endereço: ${strategy.address || "Não informado"}
+- WhatsApp: ${project.whatsapp || "Não informado"}
+- E-mail: ${project.email || "Não informado"}
+- Endereço: ${project.location || "Não informado"}
 
 ## ESTRUTURA DO SITE
 Crie as seguintes seções:
@@ -120,22 +110,26 @@ Crie um site moderno, responsivo e profissional seguindo todas essas diretrizes.
 
   const downloadContext = () => {
     const context = {
-      ...project,
-      data: {
-        ...strategy,
-        valueProposition: resolvedValueProposition,
-        detailedDescription: resolvedDescription,
-        siteObjective: resolvedSiteObjective,
-        colors: resolvedColors,
-        ctas: resolvedCtas,
-        wireframe: resolvedWireframe,
-      },
+      id: project.id,
+      name: project.companyName,
+      segment: project.segment,
+      status: project.status,
+      whatsapp: project.whatsapp,
+      email: project.email,
+      location: project.location,
+      valueProposition: resolvedValueProposition,
+      description: resolvedDescription,
+      siteObjective: resolvedSiteObjective,
+      colors: resolvedColors,
+      ctas: resolvedCtas,
+      wireframe: resolvedWireframe,
+      briefing,
     }
     const blob = new Blob([JSON.stringify(context, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${project?.name || "projeto"}-contexto.json`
+    a.download = `${project.companyName}-contexto.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -149,8 +143,6 @@ Crie um site moderno, responsivo e profissional seguindo todas essas diretrizes.
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (!project) return null
-
   return (
     <div className="relative min-h-screen">
       <div className="absolute inset-0 tech-grid opacity-30" />
@@ -160,7 +152,7 @@ Crie um site moderno, responsivo e profissional seguindo todas essas diretrizes.
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Exportar Projeto</p>
-            <h1 className="text-3xl font-black gradient-text">{project.name}</h1>
+            <h1 className="text-3xl font-black gradient-text">{project.companyName}</h1>
             <p className="text-muted-foreground mt-2">{project.segment}</p>
           </div>
 

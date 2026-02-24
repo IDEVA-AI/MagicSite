@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, ArrowLeft, Sparkles, Target, FileText, Globe } from "lucide-react"
+import { ArrowRight, ArrowLeft, Sparkles, Target, FileText, Globe, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
+import { dispatchCreditsChanged } from "@/lib/credits-event"
 
 const autoResize = (el: HTMLTextAreaElement | null) => {
   if (!el) return
@@ -29,6 +31,7 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
   const [progress, setProgress] = useState(hasExistingData ? 100 : 0)
   const [currentPhase, setCurrentPhase] = useState("")
   const [isAiHelpingDescription, setIsAiHelpingDescription] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const buildAnalysisData = useCallback(
     (valuePropositionOverride?: string) => {
@@ -357,13 +360,40 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
       setProgress(75)
 
       const fallback = buildAnalysisData()
+      let usedFallback = false
+
       valueProposition = vpResult.status === "fulfilled" ? vpResult.value : fallback.valueProposition
-      if (vpResult.status === "rejected") console.error("Erro na proposta de valor", vpResult.reason)
+      if (vpResult.status === "rejected") {
+        console.error("Erro na proposta de valor", vpResult.reason)
+        usedFallback = true
+      }
+      if (vpResult.status === "fulfilled" && vpResult.value) {
+        dispatchCreditsChanged()
+      }
 
       strategicDeclaration = sdResult.status === "fulfilled" ? sdResult.value : buildAnalysisData(valueProposition).detailedDescription
-      if (sdResult.status === "rejected") console.error("Erro na declaração estratégica", sdResult.reason)
+      if (sdResult.status === "rejected") {
+        console.error("Erro na declaração estratégica", sdResult.reason)
+        usedFallback = true
+      }
+      if (sdResult.status === "fulfilled" && sdResult.value) {
+        dispatchCreditsChanged()
+      }
+
+      // Check for 402 (insufficient credits)
+      const vpIs402 = vpResult.status === "rejected" && String(vpResult.reason).includes("402")
+      const sdIs402 = sdResult.status === "rejected" && String(sdResult.reason).includes("402")
+      if (vpIs402 || sdIs402) {
+        toast.error("Créditos insuficientes para gerar a análise com IA.")
+        dispatchCreditsChanged()
+      }
 
       if (!cancelled) {
+        if (usedFallback && !vpIs402 && !sdIs402) {
+          setGenerationError("A IA não respondeu para alguns campos. Usamos dados padrão que você pode editar.")
+          toast.warning("A IA não respondeu. Usamos dados padrão que você pode editar.")
+        }
+
         const baseData = buildAnalysisData(valueProposition)
         setAnalysisData({
           ...baseData,
@@ -415,18 +445,26 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
         }),
       })
 
+      if (response.status === 402) {
+        toast.error("Créditos insuficientes para gerar a descrição com IA.")
+        dispatchCreditsChanged()
+        return
+      }
+
       const payload = await response.json().catch(() => null)
       if (response.ok && payload?.declaration) {
         setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: payload.declaration }))
+        dispatchCreditsChanged()
       } else {
-        // Fallback to template-based generation
         const fallback = buildAnalysisData(analysisData.valueProposition)
         setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: fallback.detailedDescription }))
+        toast.warning("A IA não respondeu. Usamos dados padrão que você pode editar.")
       }
     } catch (err) {
       console.error("Erro ao gerar descrição com IA", err)
       const fallback = buildAnalysisData(analysisData.valueProposition)
       setAnalysisData((prev: typeof analysisData) => ({ ...prev, detailedDescription: fallback.detailedDescription }))
+      toast.warning("A IA não respondeu. Usamos dados padrão que você pode editar.")
     } finally {
       setIsAiHelpingDescription(false)
     }
@@ -477,6 +515,13 @@ export function StepTwoAnalysis({ onNext, onBack, initialData }: StepTwoAnalysis
           A IA gerou essas informações com base nos seus dados. Clique em qualquer texto para ajustar.
         </p>
       </div>
+
+      {generationError && (
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-yellow-700 dark:text-yellow-400">{generationError}</p>
+        </div>
+      )}
 
       <div className="space-y-5">
         {/* Value Proposition */}

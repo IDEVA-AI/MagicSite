@@ -41,7 +41,7 @@ export async function GET() {
         }
 
         return NextResponse.json(balance)
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Error fetching credits:", err)
         return NextResponse.json(
             { error: "Não foi possível buscar o saldo de créditos." },

@@ -1,8 +1,15 @@
 import OpenAI from "openai"
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const DEFAULT_MODEL = "google/gemini-3-flash-preview"
+
+const openrouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "https://magicsite.com.br",
+    "X-Title": "MagicSite",
+  },
 })
 
 function getAdminClient() {
@@ -43,12 +50,14 @@ interface CallAgentOptions {
 
 export async function callAgent({ promptName, userMessage, maxTokensOverride }: CallAgentOptions): Promise<{
   content: string
+  model: string
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }
 }> {
   const prompt = await fetchAgentPrompt(promptName)
 
-  // Normalize model name (fix typos like gpt-5.1-mini)
-  const model = prompt.model === "gpt-5.1-mini" ? "gpt-4o-mini" : prompt.model
+  // Normalize model: map legacy OpenAI models to OpenRouter free model
+  const isLegacyModel = ["gpt-5.1-mini", "gpt-4o-mini", "gpt-4o", "gpt-4", "gpt-3.5-turbo"].includes(prompt.model)
+  const model = isLegacyModel ? DEFAULT_MODEL : prompt.model
 
   const startTime = Date.now()
   let lastError: Error | null = null
@@ -58,7 +67,7 @@ export async function callAgent({ promptName, userMessage, maxTokensOverride }: 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30_000)
     try {
-      const response = await openai.chat.completions.create(
+      const response = await openrouter.chat.completions.create(
         {
           model,
           temperature: prompt.temperature,
@@ -75,10 +84,10 @@ export async function callAgent({ promptName, userMessage, maxTokensOverride }: 
       const content = response.choices[0]?.message?.content?.trim() || ""
       const usage = response.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
 
-      return { content, usage }
-    } catch (err: any) {
+      return { content, model, usage }
+    } catch (err: unknown) {
       clearTimeout(timeout)
-      lastError = err
+      lastError = err instanceof Error ? err : new Error(String(err))
       if (attempt < 2) {
         await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
       }

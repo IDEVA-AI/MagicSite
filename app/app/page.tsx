@@ -1,108 +1,57 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, FolderKanban, CheckCircle2, Clock, TrendingUp, ArrowRight, Sparkles } from "lucide-react"
+import { Plus, FolderKanban, CheckCircle2, Clock, TrendingUp, ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
-
-type Project = {
-  id: string
-  name: string
-  segment: string
-  status: "completed" | "in-progress"
-  phase: number
-  createdAt: string
-  creditsUsed: number
-}
-
-const defaultProjects: Project[] = [
-  {
-    id: "1",
-    name: "Consultoria Financeira Silva",
-    segment: "Serviços Financeiros",
-    status: "completed",
-    phase: 4,
-    createdAt: "2024-01-15",
-    creditsUsed: 20,
-  },
-  {
-    id: "2",
-    name: "Academia Fitness Pro",
-    segment: "Saúde e Bem-estar",
-    status: "in-progress",
-    phase: 2,
-    createdAt: "2024-01-18",
-    creditsUsed: 15,
-  },
-  {
-    id: "3",
-    name: "Advocacia Oliveira & Associados",
-    segment: "Serviços Jurídicos",
-    status: "in-progress",
-    phase: 3,
-    createdAt: "2024-01-20",
-    creditsUsed: 15,
-  },
-]
+import { useProjects, STATUS_LABEL_MAP, type ProjectStatus } from "@/hooks/use-projects"
 
 export default function AppDashboard() {
-  const [projects, setProjects] = useState<Project[]>(defaultProjects)
-  const storageKey = "magicsite-projects"
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "[]") as Project[]
-    if (saved.length) {
-      setProjects([...saved, ...defaultProjects])
-    }
-  }, [])
+  const { projects, loading, error } = useProjects()
 
   const stats = useMemo(() => {
-    const completed = projects.filter((p) => p.status === "completed").length
+    const completed = projects.filter((p) => p.status === "ready").length
+    const inProgress = projects.filter((p) => p.status !== "ready").length
+    const lastUpdated = projects[0]
+      ? new Date(projects[0].updatedAt).toLocaleDateString("pt-BR")
+      : "-"
+
     return [
-      {
-        label: "Projetos",
-        value: `${projects.length}`,
-        icon: FolderKanban,
-        gradient: "from-cyan-500 to-blue-500",
-      },
-      {
-        label: "Completos",
-        value: `${completed}`,
-        icon: CheckCircle2,
-        gradient: "from-emerald-500 to-teal-500",
-      },
-      {
-        label: "Tempo Médio",
-        value: "8min",
-        icon: Clock,
-        gradient: "from-violet-500 to-purple-500",
-      },
-      {
-        label: "Economia",
-        value: "R$ 24k",
-        icon: TrendingUp,
-        gradient: "from-amber-500 to-orange-500",
-      },
+      { label: "Projetos", value: `${projects.length}`, icon: FolderKanban, gradient: "from-cyan-500 to-blue-500" },
+      { label: "Completos", value: `${completed}`, icon: CheckCircle2, gradient: "from-emerald-500 to-teal-500" },
+      { label: "Em Progresso", value: `${inProgress}`, icon: Clock, gradient: "from-violet-500 to-purple-500" },
+      { label: "Última Atualização", value: lastUpdated, icon: TrendingUp, gradient: "from-amber-500 to-orange-500" },
     ]
   }, [projects])
 
-  const getStatusBadge = (status: string) => {
-    if (status === "completed") {
+  const recentProjects = projects.slice(0, 5)
+
+  const getStatusBadge = (status: ProjectStatus) => {
+    if (status === "ready") {
       return (
         <Badge className="bg-[oklch(0.55_0.1_160)]/10 text-[oklch(0.55_0.1_160)] hover:bg-[oklch(0.55_0.1_160)]/20 border-[oklch(0.55_0.1_160)]/20">
-          Completo
+          Pronto
         </Badge>
       )
     }
-    return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">Em Progresso</Badge>
+    return (
+      <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
+        {STATUS_LABEL_MAP[status] || "Em Progresso"}
+      </Badge>
+    )
   }
 
-  const getPhaseLabel = (phase: number) => {
-    const phases = ["Informações Básicas", "Análise Estratégica", "Criação de Conteúdo", "Download"]
-    return phases[phase - 1]
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Carregando projetos...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -162,66 +111,82 @@ export default function AppDashboard() {
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {projects.map((project) => (
-              <Card
-                key={project.id}
-                className="border-border/50 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <CardContent className="p-6 relative z-10">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold">{project.name}</h3>
-                        {getStatusBadge(project.status)}
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+
+          {recentProjects.length === 0 ? (
+            <Card className="border-dashed border-2 border-border/50">
+              <CardContent className="p-12 text-center">
+                <FolderKanban className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum projeto ainda</h3>
+                <p className="text-muted-foreground mb-6">Crie seu primeiro site com IA em minutos</p>
+                <Link href="/app/projects/new">
+                  <Button className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Criar Primeiro Projeto
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {recentProjects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="border-border/50 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <CardContent className="p-6 relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-semibold">{project.name}</h3>
+                          {getStatusBadge(project.status)}
+                        </div>
+
+                        <p className="text-sm text-muted-foreground">{project.segment}</p>
+
+                        <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                          <span>Fase {project.phase}/4</span>
+                          <span>{new Date(project.createdAt).toLocaleDateString("pt-BR")}</span>
+                        </div>
                       </div>
 
-                      <p className="text-sm text-muted-foreground">{project.segment}</p>
-
-                      <div className="flex items-center gap-6 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {project.creditsUsed} créditos
-                        </span>
-                        <span>Fase {project.phase}/4</span>
-                        <span>{new Date(project.createdAt).toLocaleDateString("pt-BR")}</span>
+                      <div>
+                        {project.status === "ready" ? (
+                          <Link href={`/app/projects/${project.id}/prompt`}>
+                            <Button variant="outline" className="gap-2 bg-transparent hover:bg-primary/5">
+                              Exportar
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Link href={`/app/projects/${project.id}`}>
+                            <Button className="gap-2">
+                              Continuar
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
 
-                    <div>
-                      {project.status === "completed" ? (
-                        <Link href={`/app/projects/${project.id}/export`}>
-                          <Button variant="outline" className="gap-2 bg-transparent hover:bg-primary/5">
-                            Exportar
-                            <ArrowRight className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href={`/app/projects/${project.id}`}>
-                          <Button className="gap-2">
-                            Continuar
-                            <ArrowRight className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-
-                  {project.status === "in-progress" && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-[oklch(0.7_0.19_32)] rounded-full transition-all"
-                          style={{ width: `${(project.phase / 4) * 100}%` }}
-                        />
+                    {project.status !== "ready" && (
+                      <div className="mt-4 pt-4 border-t border-border/50">
+                        <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-[oklch(0.7_0.19_32)] rounded-full transition-all"
+                            style={{ width: `${(project.phase / 4) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

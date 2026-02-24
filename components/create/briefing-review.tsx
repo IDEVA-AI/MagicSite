@@ -287,6 +287,17 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
           }),
         })
 
+        if (response.status === 402) {
+          const payload = await response.json().catch(() => ({}))
+          if (cancelled) return
+          setBriefing(generateBriefing())
+          setGenerationError(payload.error || "Créditos insuficientes para gerar o briefing.")
+          toast.error("Créditos insuficientes para gerar o briefing com IA.")
+          const { dispatchCreditsChanged } = await import("@/lib/credits-event")
+          dispatchCreditsChanged()
+          return
+        }
+
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}))
           throw new Error(payload.error || "Não foi possível gerar o briefing.")
@@ -300,7 +311,9 @@ export function BriefingReview({ onNext, onBack, initialData }: BriefingReviewPr
         setBriefing(merged)
         saveBriefingDraft(merged)
         setProgress(100)
-      } catch (err: any) {
+        const { dispatchCreditsChanged } = await import("@/lib/credits-event")
+        dispatchCreditsChanged()
+      } catch (err: unknown) {
         console.error("Erro ao gerar briefing", err)
         if (cancelled) return
         setBriefing(generateBriefing())

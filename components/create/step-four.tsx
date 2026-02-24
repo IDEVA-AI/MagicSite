@@ -4,7 +4,15 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, Copy, Download, CheckCircle2, FileText, Save } from "lucide-react"
+import { ArrowLeft, Copy, Download, CheckCircle2, FileText, Save, ChevronDown } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { createClient } from "@/utils/supabase/client"
 import { jsPDF } from "jspdf"
 import { toast } from "sonner"
@@ -230,6 +238,128 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
     }
 
     return JSON.stringify(context, null, 2)
+  }
+
+  const generateContextMarkdown = () => {
+    const s = (value: string | undefined) => (value || "Não informado").toString().trim() || "Não informado"
+    const briefing = projectData.briefing || {}
+
+    const wireframeSections = projectData.wireframe
+      ?.map(
+        (section: any, index: number) =>
+          `**${index + 1}. ${section.title}**\n${s(section.instructions)}`,
+      )
+      .join("\n\n") || ""
+
+    return `# Contexto Completo do Projeto
+
+## INFORMAÇÕES DO NEGÓCIO
+- **Nome da Empresa:** ${s(projectData.businessName)}
+- **Segmento:** ${s(resolvedSegment)}
+- **Localização:** ${s(projectData.address)}
+- **Telefone/WhatsApp:** ${s(projectData.phone)}
+- **E-mail:** ${s(projectData.email)}
+- **Instagram:** ${s(projectData.instagram)}
+- **Horário de Funcionamento:** ${s(projectData.businessHours)}
+
+**Descrição Inicial:**
+${s(projectData.description)}
+
+## ESTRATÉGIA
+
+**Proposta de Valor:**
+${s(resolvedValueProposition)}
+
+**Descrição Detalhada do Negócio:**
+${s(resolvedDescription)}
+
+**Objetivo do Site:**
+${s(resolvedSiteObjective)}
+
+## BRIEFING ESTRATÉGICO
+- **O que oferecemos:** ${s(briefing.offering)}
+- **Setor de Atuação:** ${s(briefing.sector)}
+- **Diferencial Competitivo:** ${s(briefing.differential)}
+- **Público-Alvo:** ${s(briefing.targetAudience)}
+- **Desafios do Público:** ${s(briefing.audienceChallenges)}
+- **Aspirações do Público:** ${s(briefing.audienceAspirations)}
+- **Tom de Voz:** ${s(briefing.toneOfVoice)}
+- **Objetivo Estratégico:** ${s(briefing.strategicObjective)}
+- **Filosofia Central:** ${s(briefing.corePhilosophy)}
+- **Modelo de Entrega:** ${s(briefing.deliveryModel)}
+- **Prova Social:** ${s(briefing.socialProof)}
+- **Valores Inegociáveis:** ${s(briefing.nonNegotiableValues)}
+- **Contexto de Mercado:** ${s(briefing.marketContext)}
+- **Promessa Final:** ${s(briefing.finalPromise)}
+- **Objeções Comuns:** ${s(briefing.commonObjections)}
+- **Emoção Desejada:** ${s(briefing.desiredEmotion)}
+- **Serviço Adicional:** ${s(briefing.additionalService)}
+- **Ticket Médio:** ${s(briefing.averageTicket)}
+- **CTA Principal:** ${s(briefing.ctaPrimary)}
+- **CTA Secundário:** ${s(briefing.ctaSecondary)}
+- **CTA Alternativo:** ${s(briefing.ctaAlternative)}
+- **Cores e Tema:** Primária: ${resolvedColors.primary}, Secundária: ${resolvedColors.secondary}, Tema: ${resolvedColors.theme === "dark" ? "Escuro" : "Claro"}
+
+## CONTEXTO ADICIONAL
+
+**Serviços/Produtos Detalhados:**
+${s(briefing.services)}
+
+**História da Marca:**
+${s(briefing.brandHistory)}
+
+**Processo de Trabalho:**
+${s(briefing.workProcess)}
+
+**Equipe:**
+${s(briefing.team)}
+
+**Certificações e Diferenciais Técnicos:**
+${s(briefing.certifications)}
+
+**Perguntas Frequentes (FAQ):**
+${s(briefing.faq)}
+${wireframeSections ? `\n## ESTRUTURA DO SITE (WIREFRAME)\n\n${wireframeSections}` : ""}
+
+## PROMPT COMPLETO PARA IA
+
+${generateCompletePrompt()}`
+  }
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadMarkdown = () => {
+    const content = generateCompletePrompt()
+    const filename = `${projectData.businessName || "projeto"}-prompt.md`
+    downloadFile(content, filename, "text/markdown")
+  }
+
+  const handleDownloadText = () => {
+    const content = generateCompletePrompt()
+    const filename = `${projectData.businessName || "projeto"}-prompt.txt`
+    downloadFile(content, filename, "text/plain")
+  }
+
+  const handleDownloadContextMarkdown = () => {
+    const content = generateContextMarkdown()
+    const filename = `${projectData.businessName || "projeto"}-contexto-completo.md`
+    downloadFile(content, filename, "text/markdown")
+  }
+
+  const handleDownloadContextText = () => {
+    const content = generateContextMarkdown()
+    const filename = `${projectData.businessName || "projeto"}-contexto-completo.txt`
+    downloadFile(content, filename, "text/plain")
   }
 
   const handleCopy = () => {
@@ -547,10 +677,40 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
                 </>
               )}
             </Button>
-            <Button onClick={handleDownloadContext} variant="outline" className="w-full" size="lg">
-              <Download className="mr-2 h-5 w-5" />
-              Baixar Contexto Completo (PDF)
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full" size="lg">
+                  <Download className="mr-2 h-5 w-5" />
+                  Baixar
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Prompt</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={handleDownloadMarkdown}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Prompt (.md)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDownloadText}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Prompt (.txt)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Contexto Completo</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={handleDownloadContextMarkdown}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Contexto Completo (.md)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDownloadContextText}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Contexto Completo (.txt)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDownloadContext}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Contexto Completo (.pdf)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </Card>
