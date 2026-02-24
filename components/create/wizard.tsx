@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import dynamic from "next/dynamic"
 import { StepIndicator } from "./step-indicator"
 import { StepOne } from "./step-one"
-import { StepTwoAnalysis } from "./step-two-analysis"
-import { BriefingReview } from "./briefing-review"
-import { StepThree } from "./step-three"
-import { StepFour } from "./step-four"
+
+const StepTwoAnalysis = dynamic(() => import("./step-two-analysis").then(m => ({ default: m.StepTwoAnalysis })))
+const BriefingReview = dynamic(() => import("./briefing-review").then(m => ({ default: m.BriefingReview })))
+const StepThree = dynamic(() => import("./step-three").then(m => ({ default: m.StepThree })))
+const StepFour = dynamic(() => import("./step-four").then(m => ({ default: m.StepFour })))
 import {
   AlertDialog,
   AlertDialogAction,

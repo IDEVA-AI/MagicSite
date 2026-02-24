@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { createClient } from "@/utils/supabase/client"
-import { jsPDF } from "jspdf"
+// jsPDF is dynamically imported in handleDownloadContext to avoid 830KB static bundle
 import { toast } from "sonner"
 import { clearWizardDraft } from "./wizard"
 
@@ -369,9 +369,10 @@ ${generateCompletePrompt()}`
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDownloadContext = () => {
+  const handleDownloadContext = async () => {
     if (typeof window === "undefined") return
 
+    const { jsPDF } = await import("jspdf")
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",

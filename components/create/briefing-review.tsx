@@ -41,7 +41,7 @@ import {
   HelpCircle,
   List
 } from "lucide-react"
-import { jsPDF } from "jspdf"
+// jsPDF is dynamically imported in downloadBriefingPdf to avoid 830KB static bundle
 import { Progress } from "@/components/ui/progress"
 
 const autoResize = (el: HTMLTextAreaElement | null) => {
@@ -50,9 +50,10 @@ const autoResize = (el: HTMLTextAreaElement | null) => {
   el.style.height = el.scrollHeight + "px"
 }
 
-const downloadBriefingPdf = (briefing: any) => {
+const downloadBriefingPdf = async (briefing: any) => {
   if (typeof window === "undefined") return
 
+  const { jsPDF } = await import("jspdf")
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
