@@ -8,6 +8,8 @@ function getAdminClient() {
   )
 }
 
+const INITIAL_FREE_CREDITS = 10
+
 export const CREDIT_COSTS: Record<string, number> = {
   "description-help": 1,
   "value-proposition": 1,
@@ -42,7 +44,15 @@ export async function checkAndDeductCredits(
 
     if (fetchError) {
       if (fetchError.code === "PGRST116") {
-        return { success: false, remaining: 0, error: "Nenhum saldo de créditos encontrado." }
+        // Auto-create balance with free credits for new users
+        const { error: insertError } = await supabase
+          .from("credits_balance")
+          .insert({ user_id: userId, total_credits: INITIAL_FREE_CREDITS, used_credits: 0 })
+        if (insertError) {
+          return { success: false, remaining: 0, error: "Erro ao criar saldo de créditos." }
+        }
+        // Retry with the newly created balance
+        continue
       }
       return { success: false, remaining: 0, error: "Erro ao verificar créditos." }
     }

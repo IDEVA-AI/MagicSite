@@ -29,13 +29,16 @@ export async function GET() {
             .single()
 
         if (error) {
-            // Se não existir saldo, retornar valores padrão
             if (error.code === "PGRST116") {
-                return NextResponse.json({
-                    total_credits: 0,
-                    used_credits: 0,
-                    remaining_credits: 0,
-                })
+                // Auto-create balance with free credits for new users
+                const INITIAL_FREE_CREDITS = 10
+                const { data: newBalance, error: insertError } = await supabase
+                    .from("credits_balance")
+                    .insert({ user_id: user.id, total_credits: INITIAL_FREE_CREDITS, used_credits: 0 })
+                    .select("total_credits, used_credits, remaining_credits")
+                    .single()
+                if (insertError) throw insertError
+                return NextResponse.json(newBalance)
             }
             throw error
         }
