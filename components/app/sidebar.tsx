@@ -145,11 +145,11 @@ export function AppSidebar({
                 return (
                   <Link key={item.name} href={item.href} onClick={() => isMobile && setMobileMenuOpen?.(false)}>
                     <Button
-                      variant={isActive ? "secondary" : "ghost"}
+                      variant={isActive ? "default" : "ghost"}
                       className={cn(
                         "w-full justify-start gap-3 font-bold transition-all",
                         !isMobile && collapsed && "justify-center px-2",
-                        isActive && "shadow-md",
+                        isActive && "bg-orange-500 text-white shadow-md hover:bg-gray-200 hover:text-foreground",
                       )}
                       title={!isMobile && collapsed ? item.name : undefined}
                     >
@@ -175,11 +175,11 @@ export function AppSidebar({
                 return (
                   <Link key={item.name} href={item.href} onClick={() => isMobile && setMobileMenuOpen?.(false)}>
                     <Button
-                      variant={isActive ? "secondary" : "ghost"}
+                      variant={isActive ? "default" : "ghost"}
                       className={cn(
                         "w-full justify-start gap-3 font-bold transition-all",
                         !isMobile && collapsed && "justify-center px-2",
-                        isActive && "shadow-md",
+                        isActive && "bg-orange-500 text-white shadow-md hover:bg-gray-200 hover:text-foreground",
                       )}
                       title={!isMobile && collapsed ? item.name : undefined}
                     >
