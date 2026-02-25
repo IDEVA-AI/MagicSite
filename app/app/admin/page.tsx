@@ -12,6 +12,8 @@ import {
     TrendingUp,
     ArrowRight,
     Lock,
+    Gift,
+    Loader2,
 } from "lucide-react"
 
 type Stats = {
@@ -51,6 +53,9 @@ export default function AdminPage() {
     const { isAdmin, loading: adminLoading } = useAdmin()
     const [stats, setStats] = useState<Stats | null>(null)
     const [loading, setLoading] = useState(true)
+    const [freeMode, setFreeMode] = useState(false)
+    const [freeModeLoading, setFreeModeLoading] = useState(true)
+    const [freeModeToggling, setFreeModeToggling] = useState(false)
 
     useEffect(() => {
         if (!adminLoading && !isAdmin) {
@@ -76,6 +81,44 @@ export default function AdminPage() {
 
         fetchStats()
     }, [isAdmin])
+
+    useEffect(() => {
+        if (!isAdmin) return
+
+        async function fetchFreeMode() {
+            try {
+                const res = await fetch("/api/admin/free-mode", { credentials: "include" })
+                if (!res.ok) throw new Error()
+                const data = await res.json()
+                setFreeMode(data.free_mode)
+            } catch {
+                setFreeMode(false)
+            } finally {
+                setFreeModeLoading(false)
+            }
+        }
+
+        fetchFreeMode()
+    }, [isAdmin])
+
+    async function toggleFreeMode() {
+        setFreeModeToggling(true)
+        try {
+            const res = await fetch("/api/admin/free-mode", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ free_mode: !freeMode }),
+            })
+            if (!res.ok) throw new Error()
+            const data = await res.json()
+            setFreeMode(data.free_mode)
+        } catch {
+            // revert on error
+        } finally {
+            setFreeModeToggling(false)
+        }
+    }
 
     if (adminLoading || !isAdmin) {
         return (
@@ -156,6 +199,44 @@ export default function AdminPage() {
                             )}
                         </div>
                     ))}
+                </div>
+
+                {/* Free Mode Toggle */}
+                <div className="rounded-xl border bg-card p-6 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${freeMode ? "bg-green-100" : "bg-muted"}`}>
+                                <Gift className={`w-6 h-6 ${freeMode ? "text-green-600" : "text-muted-foreground"}`} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg">Modo Free</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {freeMode
+                                        ? "Ativo — todos os usuários podem usar a plataforma sem consumir créditos"
+                                        : "Desativado — créditos são consumidos normalmente"}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={toggleFreeMode}
+                            disabled={freeModeLoading || freeModeToggling}
+                            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                freeMode ? "bg-green-600" : "bg-muted"
+                            }`}
+                        >
+                            {freeModeToggling ? (
+                                <span className="flex items-center justify-center w-full">
+                                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                </span>
+                            ) : (
+                                <span
+                                    className={`pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200 ease-in-out ${
+                                        freeMode ? "translate-x-5" : "translate-x-0"
+                                    }`}
+                                />
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Navigation Cards */}

@@ -24,6 +24,16 @@ const TRANSACTION_TYPE_MAP: Record<string, string> = {
   briefing: "debit_briefing",
 }
 
+export async function isFreeModeActive(): Promise<boolean> {
+  const supabase = getAdminClient()
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("free_mode")
+    .eq("id", 1)
+    .single()
+  return data?.free_mode === true
+}
+
 export async function checkAndDeductCredits(
   userId: string,
   amount: number,
@@ -32,6 +42,12 @@ export async function checkAndDeductCredits(
   projectId?: string
 ): Promise<{ success: boolean; remaining: number; error?: string }> {
   const supabase = getAdminClient()
+
+  // Skip credit deduction when free mode is active
+  if (await isFreeModeActive()) {
+    return { success: true, remaining: Infinity }
+  }
+
   const maxRetries = 5
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
