@@ -5,62 +5,245 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, Download, MoreVertical, Trash2, Copy, FolderKanban, Loader2 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Plus,
+  Search,
+  Download,
+  MoreVertical,
+  Trash2,
+  Copy,
+  Loader2,
+  Sparkles,
+  Pencil,
+} from "lucide-react"
 import Link from "next/link"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useProjects, STATUS_LABEL_MAP, STATUS_PHASE_MAP, type ProjectStatus, type ProjectForUI } from "@/hooks/use-projects"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  useProjects,
+  STATUS_LABEL_MAP,
+  type ProjectStatus,
+  type ProjectForUI,
+} from "@/hooks/use-projects"
+
+function formatRelativeDate(dateStr: string): string {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diffMs = now.getTime() - date.getTime()
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffMonths = Math.floor(diffDays / 30)
+  const diffYears = Math.floor(diffDays / 365)
+
+  if (diffMinutes < 1) return "agora mesmo"
+  if (diffMinutes < 60) return `há ${diffMinutes} min`
+  if (diffHours < 24) return `há ${diffHours}h`
+  if (diffDays === 1) return "há 1 dia"
+  if (diffDays < 30) return `há ${diffDays} dias`
+  if (diffMonths === 1) return "há 1 mês"
+  if (diffMonths < 12) return `há ${diffMonths} meses`
+  if (diffYears === 1) return "há 1 ano"
+  return `há ${diffYears} anos`
+}
+
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "Todos os status" },
+  { value: "draft", label: "Rascunho" },
+  { value: "briefing_complete", label: "Briefing Completo" },
+  { value: "content_complete", label: "Conteúdo Pronto" },
+  { value: "ready", label: "Pronto" },
+]
 
 export default function ProjectsPage() {
   const { projects, loading, error } = useProjects()
   const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
 
   const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) return projects
-    const q = searchQuery.toLowerCase()
-    return projects.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.segment.toLowerCase().includes(q),
-    )
-  }, [projects, searchQuery])
+    let result = projects
 
-  const completedProjects = filteredProjects.filter((p) => p.status === "ready")
-  const inProgressProjects = filteredProjects.filter((p) => p.status !== "ready")
-
-  const getStatusBadge = (status: ProjectStatus) => {
-    if (status === "ready") {
-      return (
-        <Badge className="bg-[oklch(0.55_0.1_160)]/10 text-[oklch(0.55_0.1_160)] hover:bg-[oklch(0.55_0.1_160)]/20">
-          Pronto
-        </Badge>
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.segment.toLowerCase().includes(q),
       )
     }
+
+    if (statusFilter !== "all") {
+      result = result.filter((p) => p.status === statusFilter)
+    }
+
+    return result
+  }, [projects, searchQuery, statusFilter])
+
+  const getStatusBadgeStyle = (status: ProjectStatus) => {
+    switch (status) {
+      case "ready":
+        return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+      case "content_complete":
+        return "bg-blue-500/10 text-blue-600 border-blue-500/20"
+      case "briefing_complete":
+        return "bg-amber-500/10 text-amber-600 border-amber-500/20"
+      default:
+        return "bg-muted text-muted-foreground border-border"
+    }
+  }
+
+  if (loading) {
     return (
-      <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
-        {STATUS_LABEL_MAP[status] || "Em Progresso"}
-      </Badge>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Carregando projetos...</p>
+        </div>
+      </div>
     )
   }
 
-  const getPhaseLabel = (phase: number) => {
-    const phases = ["Informações Básicas", "Análise Estratégica", "Criação de Conteúdo", "Download"]
-    return phases[phase - 1]
-  }
+  return (
+    <div className="relative min-h-screen">
+      <div className="absolute inset-0 tech-grid opacity-30" />
+      <div className="absolute inset-0 dot-pattern opacity-20" />
 
-  const ProjectCard = ({ project }: { project: ProjectForUI }) => (
-    <Card className="glow-border bg-background/50 backdrop-blur-sm hover:border-primary transition-all">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-bold">{project.name}</h3>
-              {getStatusBadge(project.status)}
+      <div className="relative p-6 lg:p-8 space-y-6">
+        {/* Banner CTA */}
+        <Card className="border-2 border-dashed border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6">
+            <div>
+              <h2 className="text-xl font-bold mb-1">
+                Pronto para criar algo incrível?
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Inicie um novo projeto e deixe a IA criar um site profissional
+                para você
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground font-medium">{project.segment}</p>
-          </div>
+            <Link href="/app/projects/new" className="shrink-0">
+              <Button size="lg" className="gap-2 font-bold shadow-lg">
+                <Sparkles className="w-5 h-5" />
+                Criar Novo Projeto
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {/* Search + Filter bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome do projeto ou cliente..."
+              className="pl-10 font-medium"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {filteredProjects.length} de {projects.length} projetos
+            </span>
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Create New Project Card */}
+          <Link href="/app/projects/new" className="block">
+            <Card className="border-2 border-dashed border-border/60 hover:border-primary/50 transition-all h-full cursor-pointer group">
+              <CardContent className="flex flex-col items-center justify-center text-center p-6 h-full min-h-[240px]">
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center mb-4 group-hover:border-primary/60 transition-colors">
+                  <Plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <h3 className="font-semibold mb-1">Criar Novo Projeto</h3>
+                <p className="text-sm text-muted-foreground">
+                  Comece um novo projeto do zero
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Project Cards */}
+          {filteredProjects.length === 0 && projects.length > 0 && (
+            <div className="col-span-full py-12 text-center">
+              <Search className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Nenhum projeto encontrado
+                {searchQuery.trim() && (
+                  <>
+                    {" "}
+                    para &quot;{searchQuery}&quot;
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              statusBadgeStyle={getStatusBadgeStyle}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectCard({
+  project,
+  statusBadgeStyle,
+}: {
+  project: ProjectForUI
+  statusBadgeStyle: (status: ProjectStatus) => string
+}) {
+  const progressPercent = (project.phase / 4) * 100
+
+  return (
+    <Card className="bg-background/50 backdrop-blur-sm hover:border-primary/40 transition-all flex flex-col">
+      <CardContent className="p-5 flex flex-col flex-1">
+        {/* Header: name + menu */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-bold text-base leading-tight line-clamp-2">
+            {project.name}
+          </h3>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 -mt-1 -mr-2"
+              >
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -77,139 +260,67 @@ export default function ProjectsPage() {
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono mb-4">
-          <span>Fase {project.phase}/4</span>
-          <span>{new Date(project.createdAt).toLocaleDateString("pt-BR")}</span>
+        {/* Segment */}
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-1">
+          {project.segment}
+        </p>
+
+        {/* Badges */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <Badge
+            variant="outline"
+            className={statusBadgeStyle(project.status)}
+          >
+            {STATUS_LABEL_MAP[project.status]}
+          </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Progress */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Progresso</span>
+            <span className="font-medium">{project.phase}/4</span>
+          </div>
+          <Progress value={progressPercent} className="h-1.5" />
+        </div>
+
+        {/* Dates */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+          <span>Criado {formatRelativeDate(project.createdAt)}</span>
+          <span>·</span>
+          <span>Atualizado {formatRelativeDate(project.updatedAt)}</span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-auto">
           {project.status === "ready" ? (
-            <Link href={`/app/projects/${project.id}/prompt`} className="flex-1">
-              <Button variant="outline" className="w-full gap-2 bg-transparent font-bold border-2">
+            <Link
+              href={`/app/projects/${project.id}/prompt`}
+              className="flex-1"
+            >
+              <Button
+                variant="outline"
+                className="w-full gap-2 font-semibold"
+                size="sm"
+              >
                 <Download className="w-4 h-4" />
-                Exportar Prompt
+                Exportar
               </Button>
             </Link>
           ) : (
             <Link href={`/app/projects/${project.id}`} className="flex-1">
-              <Button className="w-full font-bold shadow-lg">Continuar - {getPhaseLabel(project.phase)}</Button>
+              <Button className="w-full font-semibold" size="sm">
+                Continuar
+              </Button>
             </Link>
           )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  const EmptyProjectsList = () => (
-    <Card className="border-dashed border-2 border-border/50 col-span-2">
-      <CardContent className="p-12 text-center">
-        <FolderKanban className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Nenhum projeto ainda</h3>
-        <p className="text-muted-foreground mb-6">Crie seu primeiro site com IA em minutos</p>
-        <Link href="/app/projects/new">
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Projeto
-          </Button>
-        </Link>
-      </CardContent>
-    </Card>
-  )
-
-  const EmptySearchResult = () => (
-    <div className="col-span-2 py-12 text-center">
-      <Search className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-      <p className="text-muted-foreground">
-        Nenhum projeto encontrado para &quot;{searchQuery}&quot;
-      </p>
-    </div>
-  )
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Carregando projetos...</p>
-        </div>
-      </div>
-    )
-  }
-
-  const renderProjectGrid = (list: ProjectForUI[]) => (
-    <div className="grid md:grid-cols-2 gap-4">
-      {projects.length === 0 ? (
-        <EmptyProjectsList />
-      ) : list.length === 0 && searchQuery.trim() ? (
-        <EmptySearchResult />
-      ) : list.length === 0 ? (
-        <p className="col-span-2 text-center py-8 text-muted-foreground">Nenhum projeto nesta categoria</p>
-      ) : (
-        list.map((project) => <ProjectCard key={project.id} project={project} />)
-      )}
-    </div>
-  )
-
-  return (
-    <div className="relative min-h-screen">
-      <div className="absolute inset-0 tech-grid opacity-30" />
-      <div className="absolute inset-0 dot-pattern opacity-20" />
-
-      <div className="relative p-6 lg:p-8 space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black mb-2">
-              Meus <span className="gradient-text">Projetos</span>
-            </h1>
-            <p className="text-lg text-muted-foreground font-medium">Gerencie todos os seus sites criados com IA</p>
-          </div>
-
-          <Link href="/app/projects/new">
-            <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all font-bold">
-              <Plus className="w-5 h-5" />
-              Novo Projeto
+          <Link href={`/app/projects/${project.id}`}>
+            <Button variant="outline" size="icon" className="h-8 w-8">
+              <Pencil className="w-3.5 h-3.5" />
             </Button>
           </Link>
         </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar projetos..."
-            className="pl-10 font-medium"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all" className="font-bold">
-              Todos ({filteredProjects.length})
-            </TabsTrigger>
-            <TabsTrigger value="in-progress" className="font-bold">
-              Em Progresso ({inProgressProjects.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="font-bold">
-              Completos ({completedProjects.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-4">
-            {renderProjectGrid(filteredProjects)}
-          </TabsContent>
-
-          <TabsContent value="in-progress" className="space-y-4">
-            {renderProjectGrid(inProgressProjects)}
-          </TabsContent>
-
-          <TabsContent value="completed" className="space-y-4">
-            {renderProjectGrid(completedProjects)}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
