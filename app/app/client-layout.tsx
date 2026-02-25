@@ -21,7 +21,7 @@ export default function ClientLayout({
   useEffect(() => {
     const authed = typeof window !== "undefined" && localStorage.getItem("magicsite-authed") === "true"
     if (!authed) {
-      const redirectTo = encodeURIComponent(pathname || "/app")
+      const redirectTo = encodeURIComponent(pathname || "/app/projects")
       router.replace(`/login?redirect=${redirectTo}`)
       return
     }

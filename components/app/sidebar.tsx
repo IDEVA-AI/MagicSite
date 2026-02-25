@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import {
-  LayoutDashboard,
   FolderKanban,
   Settings,
   CreditCard,
@@ -28,12 +27,6 @@ import { useCredits } from "@/hooks/use-credits"
 import { createClient } from "@/utils/supabase/client"
 
 const navigation = [
-  {
-    name: "Dashboard",
-    href: "/app",
-    icon: LayoutDashboard,
-    section: "main",
-  },
   {
     name: "Projetos",
     href: "/app/projects",
@@ -94,7 +87,7 @@ export function AppSidebar({
   const isProjectRoute = pathname.startsWith("/app/projects/new")
 
   // Routes that must match exactly (they are prefixes of other nav routes)
-  const exactMatchRoutes = ["/app", "/app/settings"]
+  const exactMatchRoutes = ["/app/settings"]
 
   const getIsActive = (href: string) => {
     if (exactMatchRoutes.includes(href)) {
@@ -131,7 +124,7 @@ export function AppSidebar({
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b px-4">
         {(!collapsed || isMobile) && (
-          <Link href="/app" className="flex items-center gap-2" onClick={() => isMobile && setMobileMenuOpen?.(false)}>
+          <Link href="/app/projects" className="flex items-center gap-2" onClick={() => isMobile && setMobileMenuOpen?.(false)}>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
