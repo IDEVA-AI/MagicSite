@@ -149,7 +149,7 @@ export default function AppDashboard() {
 
                         <div className="flex items-center gap-6 text-xs text-muted-foreground">
                           <span>Fase {project.phase}/4</span>
-                          <span>{new Date(project.createdAt).toLocaleDateString("pt-BR")}</span>
+                          <span>{new Date(project.updatedAt).toLocaleDateString("pt-BR")}</span>
                         </div>
                       </div>
 
