@@ -8,7 +8,7 @@ import { StepOne } from "./step-one"
 const StepTwoAnalysis = dynamic(() => import("./step-two-analysis").then(m => ({ default: m.StepTwoAnalysis })))
 const BriefingReview = dynamic(() => import("./briefing-review").then(m => ({ default: m.BriefingReview })))
 const StepThree = dynamic(() => import("./step-three").then(m => ({ default: m.StepThree })))
-const StepFour = dynamic(() => import("./step-four").then(m => ({ default: m.StepFour })))
+const StepFour = dynamic(() => import("./step-four").then(m => ({ default: m.StepFour })), { ssr: false })
 import {
   AlertDialog,
   AlertDialogAction,

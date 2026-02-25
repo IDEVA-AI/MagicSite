@@ -32,7 +32,7 @@ export async function checkAndDeductCredits(
   projectId?: string
 ): Promise<{ success: boolean; remaining: number; error?: string }> {
   const supabase = getAdminClient()
-  const maxRetries = 3
+  const maxRetries = 5
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // Fetch current balance
@@ -75,9 +75,9 @@ export async function checkAndDeductCredits(
       .single()
 
     if (updateError || !updated) {
-      // Conflict: another request changed the balance. Retry after a short delay.
+      // Conflict: another request changed the balance. Retry after a randomized delay.
       if (attempt < maxRetries - 1) {
-        await new Promise((r) => setTimeout(r, 100 * (attempt + 1)))
+        await new Promise((r) => setTimeout(r, 150 + Math.random() * 300 * (attempt + 1)))
         continue
       }
       return { success: false, remaining, error: "Conflito ao deduzir créditos. Tente novamente." }

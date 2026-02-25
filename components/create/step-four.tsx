@@ -372,7 +372,14 @@ ${generateCompletePrompt()}`
   const handleDownloadContext = async () => {
     if (typeof window === "undefined") return
 
-    const { jsPDF } = await import("jspdf")
+    let jsPDF: any
+    try {
+      const mod = await import("@/lib/pdf")
+      jsPDF = mod.jsPDF
+    } catch {
+      toast.error("Erro ao carregar gerador de PDF. Tente baixar em formato .md ou .txt.")
+      return
+    }
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
