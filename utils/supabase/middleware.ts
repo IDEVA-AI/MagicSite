@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const publicPaths = ['/', '/login', '/auth', '/signup', '/api/public']
+const publicPaths = ['/', '/login', '/auth', '/signup', '/api/public', '/parceiros', '/api/partnership']
 
 function isPublicPath(pathname: string) {
     if (pathname === '/') return true
