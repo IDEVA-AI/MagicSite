@@ -566,7 +566,7 @@ ${generateCompletePrompt()}`
             business_description: resolvedDescription,
             business_proposal: resolvedValueProposition,
             site_objectives: resolvedSiteObjective,
-            status: "briefing_complete"
+            status: "ready"
           })
           .eq("id", projectData.id)
 
@@ -607,7 +607,7 @@ ${generateCompletePrompt()}`
             business_description: resolvedDescription,
             business_proposal: resolvedValueProposition,
             site_objectives: resolvedSiteObjective,
-            status: "briefing_complete"
+            status: "ready"
           })
           .select()
           .single()
