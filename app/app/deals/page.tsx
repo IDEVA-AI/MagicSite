@@ -33,9 +33,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Plus, Phone, User, Eye, FileText, DollarSign,
-  CheckCircle, Package, Loader2, Pencil, Trash2,
-  Calendar, StickyNote, LinkIcon,
+  Plus, Phone, User, MessageCircle, Presentation, DollarSign,
+  Handshake, CircleDollarSign, Loader2, Pencil, Trash2,
+  Calendar, StickyNote, LinkIcon, ThumbsDown, Archive, RotateCcw,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useDeals, type Deal, type DealStatus, type DealCreateInput } from "@/hooks/use-deals"
@@ -43,18 +43,18 @@ import { useProjects } from "@/hooks/use-projects"
 
 const columns: { id: DealStatus; title: string; color: string; bgColor: string; icon: React.ReactNode }[] = [
   {
-    id: "lead",
-    title: "Lead",
+    id: "contato",
+    title: "Contato",
     color: "text-slate-700",
     bgColor: "bg-slate-100/80 border-slate-200",
-    icon: <Eye className="w-4 h-4" />,
+    icon: <MessageCircle className="w-4 h-4" />,
   },
   {
-    id: "proposta",
-    title: "Proposta",
+    id: "apresentacao",
+    title: "Apresentação",
     color: "text-blue-700",
     bgColor: "bg-blue-50/80 border-blue-200",
-    icon: <FileText className="w-4 h-4" />,
+    icon: <Presentation className="w-4 h-4" />,
   },
   {
     id: "negociacao",
@@ -64,18 +64,18 @@ const columns: { id: DealStatus; title: string; color: string; bgColor: string; 
     icon: <DollarSign className="w-4 h-4" />,
   },
   {
-    id: "fechado",
-    title: "Fechado",
+    id: "fechamento",
+    title: "Fechamento",
     color: "text-emerald-700",
     bgColor: "bg-emerald-50/80 border-emerald-200",
-    icon: <CheckCircle className="w-4 h-4" />,
+    icon: <Handshake className="w-4 h-4" />,
   },
   {
-    id: "entregue",
-    title: "Entregue",
+    id: "recebido",
+    title: "Recebido",
     color: "text-purple-700",
     bgColor: "bg-purple-50/80 border-purple-200",
-    icon: <Package className="w-4 h-4" />,
+    icon: <CircleDollarSign className="w-4 h-4" />,
   },
 ]
 
@@ -94,6 +94,7 @@ export default function DealsPage() {
   const { projects } = useProjects()
 
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null)
+  const [showLost, setShowLost] = useState(false)
 
   // Create dialog
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -109,8 +110,11 @@ export default function DealsPage() {
   const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const activeDeals = useMemo(() => deals.filter((d) => d.status !== "perdido"), [deals])
+  const lostDeals = useMemo(() => deals.filter((d) => d.status === "perdido"), [deals])
+
   const getDealsByStatus = (status: DealStatus) => {
-    return deals.filter((deal) => deal.status === status)
+    return activeDeals.filter((deal) => deal.status === status)
   }
 
   const getTotalByStatus = (status: DealStatus) => {
@@ -118,8 +122,12 @@ export default function DealsPage() {
   }
 
   const grandTotal = useMemo(() => {
-    return deals.reduce((sum, deal) => sum + deal.value_cents, 0)
-  }, [deals])
+    return activeDeals.reduce((sum, deal) => sum + deal.value_cents, 0)
+  }, [activeDeals])
+
+  const lostTotal = useMemo(() => {
+    return lostDeals.reduce((sum, deal) => sum + deal.value_cents, 0)
+  }, [lostDeals])
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -145,6 +153,26 @@ export default function DealsPage() {
       toast.success(`Negócio movido para ${columns.find((c) => c.id === status)?.title}`)
     }
     setDraggedDeal(null)
+  }
+
+  // Mark as lost
+  const handleMarkLost = async (deal: Deal) => {
+    try {
+      await updateDeal(deal.id, { status: "perdido" as DealStatus })
+      toast("Negócio marcado como perdido", { description: deal.project_name })
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
+  // Recover lost deal
+  const handleRecover = async (deal: Deal) => {
+    try {
+      await updateDeal(deal.id, { status: "contato" as DealStatus })
+      toast.success("Negócio recuperado para Contato!")
+    } catch (err: any) {
+      toast.error(err.message)
+    }
   }
 
   // Create
@@ -313,6 +341,102 @@ export default function DealsPage() {
     </div>
   )
 
+  // Deal card component
+  const renderDealCard = (deal: Deal, options?: { showRecover?: boolean }) => {
+    const linkedProject = deal.project_id
+      ? projects.find((p) => p.id === deal.project_id)
+      : null
+
+    return (
+      <Card
+        key={deal.id}
+        draggable={!options?.showRecover}
+        onDragStart={() => handleDragStart(deal)}
+        className="p-3 cursor-grab active:cursor-grabbing bg-card hover:bg-accent/5 transition-colors border shadow-sm hover:shadow-md group"
+      >
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-1">
+            <h3 className="font-medium text-sm text-foreground leading-snug line-clamp-2 flex-1">
+              {deal.project_name}
+            </h3>
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              {options?.showRecover ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRecover(deal) }}
+                  className="p-1 rounded hover:bg-emerald-100"
+                  title="Recuperar negócio"
+                >
+                  <RotateCcw className="w-3 h-3 text-emerald-600" />
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleMarkLost(deal) }}
+                  className="p-1 rounded hover:bg-red-100"
+                  title="Marcar como perdido"
+                >
+                  <ThumbsDown className="w-3 h-3 text-red-400" />
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); openEdit(deal) }}
+                className="p-1 rounded hover:bg-accent"
+              >
+                <Pencil className="w-3 h-3 text-muted-foreground" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setDeletingDeal(deal) }}
+                className="p-1 rounded hover:bg-destructive/10"
+              >
+                <Trash2 className="w-3 h-3 text-destructive" />
+              </button>
+            </div>
+          </div>
+
+          {deal.segment && (
+            <p className="text-xs text-muted-foreground line-clamp-1">{deal.segment}</p>
+          )}
+
+          <div className="border-t pt-2 space-y-1.5">
+            {deal.client_name && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <User className="w-3 h-3 shrink-0 opacity-60" />
+                <span className="truncate">{deal.client_name}</span>
+              </div>
+            )}
+            {deal.phone && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Phone className="w-3 h-3 shrink-0 opacity-60" />
+                <span className="truncate">{deal.phone}</span>
+              </div>
+            )}
+            {linkedProject && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <LinkIcon className="w-3 h-3 shrink-0 opacity-60" />
+                <span className="truncate">{linkedProject.name}</span>
+              </div>
+            )}
+            {deal.notes && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <StickyNote className="w-3 h-3 shrink-0 opacity-60" />
+                <span className="truncate">{deal.notes}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t flex items-center justify-between">
+            <span className="text-base font-bold text-primary">
+              {formatCurrency(deal.value_cents)}
+            </span>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Calendar className="w-2.5 h-2.5" />
+              {formatDate(deal.created_at)}
+            </span>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -346,32 +470,71 @@ export default function DealsPage() {
             </p>
           </div>
 
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all font-bold w-full sm:w-auto">
-                <Plus className="w-5 h-5" />
-                Novo Negócio
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Criar Novo Negócio</DialogTitle>
-                <DialogDescription>Adicione um novo negócio ao pipeline. Será criado como Lead.</DialogDescription>
-              </DialogHeader>
-              {renderFormFields(createForm, setCreateForm)}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={creating}>
-                  Cancelar
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant={showLost ? "secondary" : "outline"}
+              size="lg"
+              className="gap-2 font-medium flex-1 sm:flex-initial"
+              onClick={() => setShowLost(!showLost)}
+            >
+              <Archive className="w-4 h-4" />
+              Perdidos
+              {lostDeals.length > 0 && (
+                <span className="ml-1 bg-red-100 text-red-700 text-xs font-bold rounded-full px-1.5 py-0.5">
+                  {lostDeals.length}
+                </span>
+              )}
+            </Button>
+
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all font-bold flex-1 sm:flex-initial">
+                  <Plus className="w-5 h-5" />
+                  Novo Negócio
                 </Button>
-                <Button onClick={handleCreate} disabled={!createForm.project_name.trim() || creating}>
-                  {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  Criar Negócio
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Criar Novo Negócio</DialogTitle>
+                  <DialogDescription>Adicione um novo negócio ao pipeline. Será criado como Contato.</DialogDescription>
+                </DialogHeader>
+                {renderFormFields(createForm, setCreateForm)}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={creating}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreate} disabled={!createForm.project_name.trim() || creating}>
+                    {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    Criar Negócio
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
+        {/* Lost deals section */}
+        {showLost && (
+          <div className="rounded-lg border border-red-200 bg-red-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ThumbsDown className="w-4 h-4 text-red-500" />
+                <h2 className="font-semibold text-sm text-red-700">Negócios Perdidos</h2>
+                <span className="text-xs text-red-500">({lostDeals.length})</span>
+              </div>
+              <span className="text-xs font-bold text-red-600">{formatCurrency(lostTotal)}</span>
+            </div>
+            {lostDeals.length === 0 ? (
+              <p className="text-xs text-red-400 text-center py-4">Nenhum negócio perdido</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {lostDeals.map((deal) => renderDealCard(deal, { showRecover: true }))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Pipeline columns */}
         <div className="overflow-x-auto pb-4 -mx-4 px-4 lg:mx-0 lg:px-0">
           <div className="flex gap-3 lg:gap-4 min-w-max lg:grid lg:grid-cols-5">
             {columns.map((column) => {
@@ -404,83 +567,7 @@ export default function DealsPage() {
                         <p className="text-xs text-muted-foreground">Arraste cards aqui</p>
                       </div>
                     ) : (
-                      columnDeals.map((deal) => {
-                        const linkedProject = deal.project_id
-                          ? projects.find((p) => p.id === deal.project_id)
-                          : null
-
-                        return (
-                          <Card
-                            key={deal.id}
-                            draggable
-                            onDragStart={() => handleDragStart(deal)}
-                            className="p-3 cursor-grab active:cursor-grabbing bg-card hover:bg-accent/5 transition-colors border shadow-sm hover:shadow-md group"
-                          >
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between gap-1">
-                                <h3 className="font-medium text-sm text-foreground leading-snug line-clamp-2 flex-1">
-                                  {deal.project_name}
-                                </h3>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); openEdit(deal) }}
-                                    className="p-1 rounded hover:bg-accent"
-                                  >
-                                    <Pencil className="w-3 h-3 text-muted-foreground" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setDeletingDeal(deal) }}
-                                    className="p-1 rounded hover:bg-destructive/10"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-destructive" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {deal.segment && (
-                                <p className="text-xs text-muted-foreground line-clamp-1">{deal.segment}</p>
-                              )}
-
-                              <div className="border-t pt-2 space-y-1.5">
-                                {deal.client_name && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <User className="w-3 h-3 shrink-0 opacity-60" />
-                                    <span className="truncate">{deal.client_name}</span>
-                                  </div>
-                                )}
-                                {deal.phone && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <Phone className="w-3 h-3 shrink-0 opacity-60" />
-                                    <span className="truncate">{deal.phone}</span>
-                                  </div>
-                                )}
-                                {linkedProject && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <LinkIcon className="w-3 h-3 shrink-0 opacity-60" />
-                                    <span className="truncate">{linkedProject.name}</span>
-                                  </div>
-                                )}
-                                {deal.notes && (
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <StickyNote className="w-3 h-3 shrink-0 opacity-60" />
-                                    <span className="truncate">{deal.notes}</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="pt-2 border-t flex items-center justify-between">
-                                <span className="text-base font-bold text-primary">
-                                  {formatCurrency(deal.value_cents)}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" />
-                                  {formatDate(deal.created_at)}
-                                </span>
-                              </div>
-                            </div>
-                          </Card>
-                        )
-                      })
+                      columnDeals.map((deal) => renderDealCard(deal))
                     )}
                   </div>
                 </div>

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
             segment: body.segment?.trim() || null,
             phone: body.phone?.trim() || null,
             value_cents: body.value_cents ?? 0,
-            status: body.status || "lead",
+            status: body.status || "contato",
             notes: body.notes?.trim() || null,
             project_id: body.project_id || null,
         })

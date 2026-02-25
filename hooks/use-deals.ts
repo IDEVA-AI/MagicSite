@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-export type DealStatus = "lead" | "proposta" | "negociacao" | "fechado" | "entregue"
+export type DealStatus = "contato" | "apresentacao" | "negociacao" | "fechamento" | "recebido" | "perdido"
 
 export interface Deal {
   id: string
