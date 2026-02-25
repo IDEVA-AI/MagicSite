@@ -64,7 +64,7 @@ function buildFallback(input: z.infer<typeof schema>, resolvedSegment: string) {
   }
 }
 
-async function debitCredits(supabase: any, userId: string) {
+async function debitCredits(supabase: any, userId: string): Promise<void> {
   // Garantir que o saldo exista
   const { data: existingBalance } = await supabase
     .from("credits_balance")
@@ -239,7 +239,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("OpenAI generation error", err)
     const fallback = buildFallback(trimmed, resolvedSegment)
-    result = fallback
+    result = fallback as typeof result
 
     await supabase.from("ai_generation_logs").insert({
       generation_type: "briefing",
