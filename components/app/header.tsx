@@ -9,12 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Bell, Zap, User, Settings, LogOut, Menu } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 import { useCredits } from "@/hooks/use-credits"
+import { useProfile } from "@/hooks/use-profile"
 import { createClient } from "@/utils/supabase/client"
 
 export function AppHeader({
@@ -26,6 +27,7 @@ export function AppHeader({
 }) {
   const router = useRouter()
   const { credits, loading } = useCredits()
+  const { profile } = useProfile()
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -40,12 +42,14 @@ export function AppHeader({
     return credits.remaining_credits ?? 0
   }, [credits.remaining_credits, loading])
 
-  // Mock data - TODO: buscar do usuário autenticado
-  const user = {
-    name: "João Silva",
-    email: "joao@email.com",
-    plan: "Pro",
-  }
+  const userName = profile?.name || ""
+  const userEmail = profile?.email || ""
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 
   return (
     <header className="h-16 border-b bg-card px-6 flex items-center justify-between">
@@ -81,24 +85,22 @@ export function AppHeader({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 pl-2">
               <Avatar className="w-8 h-8">
+                <AvatarImage src={profile?.avatar_url ?? undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {userInitials || "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="text-left hidden lg:block">
-                <div className="text-sm font-medium">{user.name}</div>
-                <div className="text-xs text-muted-foreground">Plano {user.plan}</div>
+                <div className="text-sm font-medium">{userName || "..."}</div>
+                <div className="text-xs text-muted-foreground">Plano Pro</div>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-sm font-medium">{userName}</p>
+                <p className="text-xs text-muted-foreground">{userEmail}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
