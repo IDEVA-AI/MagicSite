@@ -1,7 +1,11 @@
 import OpenAI from "openai"
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js"
 
-const DEFAULT_MODEL = "google/gemini-3-flash-preview"
+const FALLBACK_MODELS = [
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-flash-preview",
+  "meta-llama/llama-4-maverick",
+]
 
 const openrouter = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -55,17 +59,18 @@ export async function callAgent({ promptName, userMessage, maxTokensOverride }: 
 }> {
   const prompt = await fetchAgentPrompt(promptName)
 
-  // Normalize model: map legacy OpenAI models to OpenRouter free model
+  // Normalize model: map legacy OpenAI models to fallback chain
   const isLegacyModel = ["gpt-5.1-mini", "gpt-4o-mini", "gpt-4o", "gpt-4", "gpt-3.5-turbo"].includes(prompt.model)
-  const model = isLegacyModel ? DEFAULT_MODEL : prompt.model
+  const models = isLegacyModel
+    ? FALLBACK_MODELS
+    : [prompt.model, ...FALLBACK_MODELS.filter((m) => m !== prompt.model)]
 
-  const startTime = Date.now()
-  let lastError: Error | null = null
+  const errors: string[] = []
 
-  // Retry with backoff (up to 2 retries)
-  for (let attempt = 0; attempt <= 2; attempt++) {
+  // Try each model once (1 attempt per model)
+  for (const model of models) {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30_000)
+    const timeout = setTimeout(() => controller.abort(), 20_000)
     try {
       const response = await openrouter.chat.completions.create(
         {
@@ -84,17 +89,20 @@ export async function callAgent({ promptName, userMessage, maxTokensOverride }: 
       const content = response.choices[0]?.message?.content?.trim() || ""
       const usage = response.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
 
+      if (!content) {
+        errors.push(`${model}: empty response`)
+        continue
+      }
+
       return { content, model, usage }
     } catch (err: unknown) {
       clearTimeout(timeout)
-      lastError = err instanceof Error ? err : new Error(String(err))
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
-      }
+      const msg = err instanceof Error ? err.message : String(err)
+      errors.push(`${model}: ${msg}`)
     }
   }
 
-  throw lastError ?? new Error("Failed to call agent after retries")
+  throw new Error(`All models failed:\n${errors.join("\n")}`)
 }
 
 export function parseJsonResponse(content: string): any {
