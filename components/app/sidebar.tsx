@@ -18,12 +18,14 @@ import {
   Zap,
   User,
   DollarSign,
+  LayoutDashboard,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Progress } from "@/components/ui/progress"
 import { useCredits } from "@/hooks/use-credits"
+import { useAdmin } from "@/hooks/use-admin"
 import { createClient } from "@/utils/supabase/client"
 
 const navigation = [
@@ -57,6 +59,12 @@ const navigation = [
     icon: HelpCircle,
     section: "account",
   },
+  {
+    name: "Painel Admin",
+    href: "/app/admin",
+    icon: LayoutDashboard,
+    section: "admin",
+  },
 ]
 
 export function AppSidebar({
@@ -70,6 +78,7 @@ export function AppSidebar({
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const { credits, loading } = useCredits()
+  const { isAdmin } = useAdmin()
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -178,6 +187,20 @@ export function AppSidebar({
               .filter((item) => item.section === "account")
               .map((item) => renderNavItem(item, isMobile))}
           </div>
+
+          {isAdmin && (
+            <>
+              {(!collapsed || isMobile) && <Separator />}
+              <div className="space-y-1">
+                {(!collapsed || isMobile) && (
+                  <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin</p>
+                )}
+                {navigation
+                  .filter((item) => item.section === "admin")
+                  .map((item) => renderNavItem(item, isMobile))}
+              </div>
+            </>
+          )}
         </nav>
       </ScrollArea>
 
