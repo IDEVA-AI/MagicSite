@@ -93,6 +93,39 @@ export function AppSidebar({
 
   const isProjectRoute = pathname.startsWith("/app/projects/new")
 
+  // Routes that must match exactly (they are prefixes of other nav routes)
+  const exactMatchRoutes = ["/app", "/app/settings"]
+
+  const getIsActive = (href: string) => {
+    if (exactMatchRoutes.includes(href)) {
+      return pathname === href
+    }
+    return pathname === href || pathname.startsWith(href + "/")
+  }
+
+  const renderNavItem = (item: (typeof navigation)[number], isMobile: boolean) => {
+    const isActive = getIsActive(item.href)
+
+    return (
+      <Link key={item.name} href={item.href} onClick={() => isMobile && setMobileMenuOpen?.(false)}>
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start gap-3 font-bold transition-colors",
+            !isMobile && collapsed && "justify-center px-2",
+            isActive
+              ? "!bg-accent !text-accent-foreground shadow-md"
+              : "",
+          )}
+          title={!isMobile && collapsed ? item.name : undefined}
+        >
+          <item.icon className="w-5 h-5 shrink-0" />
+          {(isMobile || !collapsed) && <span className="font-normal">{item.name}</span>}
+        </Button>
+      </Link>
+    )
+  }
+
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="relative flex h-full flex-col">
       {/* Logo */}
@@ -139,26 +172,7 @@ export function AppSidebar({
             )}
             {navigation
               .filter((item) => item.section === "main")
-              .map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-
-                return (
-                  <Link key={item.name} href={item.href} onClick={() => isMobile && setMobileMenuOpen?.(false)}>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start gap-3 font-bold transition-all",
-                        !isMobile && collapsed && "justify-center px-2",
-                        isActive && "bg-orange-500 text-white shadow-md hover:bg-gray-200 hover:text-foreground",
-                      )}
-                      title={!isMobile && collapsed ? item.name : undefined}
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {(isMobile || !collapsed) && <span className="font-normal">{item.name}</span>}
-                    </Button>
-                  </Link>
-                )
-              })}
+              .map((item) => renderNavItem(item, isMobile))}
           </div>
 
           {(!collapsed || isMobile) && <Separator />}
@@ -169,26 +183,7 @@ export function AppSidebar({
             )}
             {navigation
               .filter((item) => item.section === "account")
-              .map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-
-                return (
-                  <Link key={item.name} href={item.href} onClick={() => isMobile && setMobileMenuOpen?.(false)}>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start gap-3 font-bold transition-all",
-                        !isMobile && collapsed && "justify-center px-2",
-                        isActive && "bg-orange-500 text-white shadow-md hover:bg-gray-200 hover:text-foreground",
-                      )}
-                      title={!isMobile && collapsed ? item.name : undefined}
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {(isMobile || !collapsed) && <span className="font-normal">{item.name}</span>}
-                    </Button>
-                  </Link>
-                )
-              })}
+              .map((item) => renderNavItem(item, isMobile))}
           </div>
         </nav>
       </ScrollArea>
@@ -259,7 +254,7 @@ export function AppSidebar({
       {!isProjectRoute && (
         <div
           className={cn(
-            "relative border-r bg-card/50 backdrop-blur-sm transition-all duration-300 hidden lg:block",
+            "relative border-r bg-card/50 backdrop-blur-sm transition-[width] duration-300 hidden lg:block",
             collapsed ? "w-16" : "w-64",
           )}
         >
