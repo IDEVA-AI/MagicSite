@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Plus,
   Search,
   Download,
@@ -37,6 +47,8 @@ import {
   type ProjectStatus,
   type ProjectForUI,
 } from "@/hooks/use-projects"
+import { createClient } from "@/utils/supabase/client"
+import { toast } from "sonner"
 
 function formatRelativeDate(dateStr: string): string {
   const now = new Date()
@@ -68,9 +80,32 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 ]
 
 export default function ProjectsPage() {
-  const { projects, loading, error } = useProjects()
+  const { projects, loading, error, reload } = useProjects()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [projectToDelete, setProjectToDelete] = useState<ProjectForUI | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteConfirm = async () => {
+    if (!projectToDelete) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error: deleteError } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectToDelete.id)
+
+    if (deleteError) {
+      toast.error("Erro ao excluir projeto", { description: deleteError.message })
+      setDeleting(false)
+      return
+    }
+
+    toast.success("Projeto excluído com sucesso!")
+    setProjectToDelete(null)
+    setDeleting(false)
+    reload()
+  }
 
   const filteredProjects = useMemo(() => {
     let result = projects
@@ -212,9 +247,44 @@ export default function ProjectsPage() {
               key={project.id}
               project={project}
               statusBadgeStyle={getStatusBadgeStyle}
+              onDelete={setProjectToDelete}
             />
           ))}
         </div>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog
+          open={!!projectToDelete}
+          onOpenChange={(open) => !open && setProjectToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir projeto</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o projeto{" "}
+                <strong>&quot;{projectToDelete?.name}&quot;</strong>? Esta ação
+                não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  "Excluir"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
@@ -223,9 +293,11 @@ export default function ProjectsPage() {
 function ProjectCard({
   project,
   statusBadgeStyle,
+  onDelete,
 }: {
   project: ProjectForUI
   statusBadgeStyle: (status: ProjectStatus) => string
+  onDelete: (project: ProjectForUI) => void
 }) {
   const progressPercent = (project.phase / 4) * 100
 
@@ -252,7 +324,10 @@ function ProjectCard({
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicar
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => onDelete(project)}
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Excluir
               </DropdownMenuItem>
