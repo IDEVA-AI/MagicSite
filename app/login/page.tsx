@@ -38,6 +38,32 @@ function LoginForm() {
       })
 
       if (error) {
+        // Check if this is a migrated partner student without auth.users account
+        try {
+          const checkRes = await fetch("/api/partnership/check-and-validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          })
+          const checkData = await checkRes.json()
+
+          if (checkData.found) {
+            sessionStorage.setItem(
+              "partnership_validation",
+              JSON.stringify({
+                validationId: checkData.validationId,
+                name: checkData.name,
+                email: checkData.email,
+              })
+            )
+            toast.info("Detectamos que você é aluno parceiro. Defina sua nova senha.")
+            router.push("/parceiros/registro")
+            return
+          }
+        } catch {
+          // If check fails, fall through to normal error
+        }
+
         toast.error("Erro ao fazer login", {
           description: error.message,
         })

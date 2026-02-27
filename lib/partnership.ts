@@ -24,7 +24,7 @@ interface PartnerStudentData {
   isActive: boolean
 }
 
-async function getActiveInstitution(): Promise<PartnerInstitution | null> {
+export async function getActiveInstitution(): Promise<PartnerInstitution | null> {
   const supabase = getAdminClient()
   const { data, error } = await supabase
     .from("partner_institutions")
@@ -37,7 +37,7 @@ async function getActiveInstitution(): Promise<PartnerInstitution | null> {
   return data
 }
 
-async function queryPartnerDatabase(
+export async function queryPartnerDatabase(
   institution: PartnerInstitution,
   emailOrCpf: string
 ): Promise<PartnerStudentData | null> {
