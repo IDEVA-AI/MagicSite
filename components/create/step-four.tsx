@@ -194,7 +194,61 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
 9. Tom de voz da copy: ${b.toneOfVoice || "profissional e confiável"} em TODO o texto do site
 10. Incluir botão flutuante de WhatsApp no canto inferior direito
 11. Usar placeholders descritivos para imagens (ex: "foto profissional mostrando o serviço em ação")
-12. Adicionar animações sutis: fade-in nas seções ao scroll, hover effects nos cards e botões`
+12. Adicionar animações sutis: fade-in nas seções ao scroll, hover effects nos cards e botões
+
+## DEPLOY (PRIORIDADE MÁXIMA)
+O projeto DEVE incluir o diretório \`.github/workflows/\` com o arquivo \`main.yml\` abaixo para deploy automático via FTP na HostGator. Isso é OBRIGATÓRIO e deve ser implementado antes de qualquer outra configuração de deploy.
+
+\`\`\`yaml
+name: Build and Deploy Vite/Next.js App to HostGator via FTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      - name: Instalar dependências
+        run: npm install --legacy-peer-deps
+
+      - name: Instalar react-is (necessário para Recharts)
+        run: npm install react-is --legacy-peer-deps
+
+      - name: Build do projeto
+        run: npm run build
+
+      - name: Detectar diretório de build (dist/ ou out/)
+        id: detect-dir
+        run: |
+          if [ -d "dist" ]; then
+            echo "BUILD_DIR=dist" >> \$GITHUB_ENV
+          elif [ -d "out" ]; then
+            echo "BUILD_DIR=out" >> \$GITHUB_ENV
+          else
+            echo "Nenhum diretório de build encontrado (dist/ ou out/)."
+            exit 1
+          fi
+
+      - name: Deploy via FTP para HostGator
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: \${{ secrets.FTP_SERVER }}
+          username: \${{ secrets.FTP_USERNAME }}
+          password: \${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: \${{ env.BUILD_DIR }}/
+          server-dir: /
+\`\`\`
+
+Configure os secrets \`FTP_SERVER\`, \`FTP_USERNAME\` e \`FTP_PASSWORD\` no repositório GitHub.`
   }
 
 
