@@ -274,7 +274,7 @@ jobs:
             **/*.map
 \`\`\`
 
-Secrets necessários no GitHub: \`FTP_SERVER\`, \`FTP_USERNAME\`, \`FTP_PASSWORD\`, \`FTP_SERVER_DIR\` (padrão: /)
+Secrets necessários no GitHub: \`FTP_SERVER\`, \`FTP_USERNAME\`, \`FTP_PASSWORD\`, \`FTP_SERVER_DIR\` (padrão: /)`
   }
 
 
