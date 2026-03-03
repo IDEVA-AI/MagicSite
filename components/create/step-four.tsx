@@ -196,47 +196,67 @@ Crie um site moderno, responsivo e profissional seguindo TODAS as diretrizes aci
 11. Usar placeholders descritivos para imagens (ex: "foto profissional mostrando o serviço em ação")
 12. Adicionar animações sutis: fade-in nas seções ao scroll, hover effects nos cards e botões
 
-## DEPLOY (PRIORIDADE MÁXIMA)
-O projeto DEVE incluir o diretório \`.github/workflows/\` com o arquivo \`main.yml\` abaixo para deploy automático via FTP na HostGator. Isso é OBRIGATÓRIO e deve ser implementado antes de qualquer outra configuração de deploy.
+## DEPLOY — CI/CD (OBRIGATÓRIO)
+
+O projeto será hospedado em HostGator/cPanel via FTP. Siga TODAS as regras abaixo:
+
+1. Se for Vite: configure \`base: './'\` em vite.config.(js|ts) para assets relativos
+2. Se for Next.js: use export estático (output: 'export'), sem SSR/API routes
+3. Se for SPA com rotas, crie \`public/.htaccess\`:
+\`\`\`
+Options -Indexes
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+\`\`\`
+
+4. Crie \`.github/workflows/main.yml\` com o conteúdo EXATO abaixo (não altere nada):
 
 \`\`\`yaml
-name: Build and Deploy Vite/Next.js App to HostGator via FTP
+name: Deploy to HostGator via FTP
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Instalar dependências
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
-      - name: Instalar react-is (necessário para Recharts)
+      - name: Instalar react-is
         run: npm install react-is --legacy-peer-deps
 
-      - name: Build do projeto
-        run: npm run build
+      - run: npm run build
 
-      - name: Detectar diretório de build (dist/ ou out/)
-        id: detect-dir
+      - name: Detectar diretório de build
         run: |
-          if [ -d "dist" ]; then
-            echo "BUILD_DIR=dist" >> \$GITHUB_ENV
-          elif [ -d "out" ]; then
-            echo "BUILD_DIR=out" >> \$GITHUB_ENV
-          else
-            echo "Nenhum diretório de build encontrado (dist/ ou out/)."
-            exit 1
-          fi
+          if [ -d "dist" ]; then echo "BUILD_DIR=dist" >> \$GITHUB_ENV
+          elif [ -d "out" ]; then echo "BUILD_DIR=out" >> \$GITHUB_ENV
+          else echo "ERRO: dist/ ou out/ não encontrado" && exit 1; fi
 
-      - name: Deploy via FTP para HostGator
+      - name: Validar build
+        run: |
+          test -f "\$BUILD_DIR/index.html" || (echo "ERRO: index.html não encontrado" && exit 1)
+          grep -qE 'src="/src/|src="\\./src/|href="/src/' "\$BUILD_DIR/index.html" && echo "ERRO: aponta para /src (source, não build)" && exit 1
+          if [ "\$BUILD_DIR" = "dist" ]; then
+            test -d "\$BUILD_DIR/assets" || (echo "ERRO: dist/assets não encontrado" && exit 1)
+            grep -q 'src="/assets/' "\$BUILD_DIR/index.html" && echo "ERRO: assets absoluto, configure base: './'" && exit 1
+          fi
+          echo "Build válido: \$BUILD_DIR"
+
+      - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: \${{ secrets.FTP_SERVER }}
@@ -245,10 +265,16 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: \${{ env.BUILD_DIR }}/
-          server-dir: /
+          server-dir: \${{ secrets.FTP_SERVER_DIR }}
+          dangerous-clean-slate: true
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/*.map
 \`\`\`
 
-Configure os secrets \`FTP_SERVER\`, \`FTP_USERNAME\` e \`FTP_PASSWORD\` no repositório GitHub.`
+Secrets necessários no GitHub: \`FTP_SERVER\`, \`FTP_USERNAME\`, \`FTP_PASSWORD\`, \`FTP_SERVER_DIR\` (padrão: /)
   }
 
 
