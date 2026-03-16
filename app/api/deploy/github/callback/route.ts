@@ -22,7 +22,12 @@ export async function POST(request: NextRequest) {
 
   const tokenData = await tokenRes.json()
   if (tokenData.error) {
-    return NextResponse.json({ error: tokenData.error_description || "Falha na autenticação." }, { status: 400 })
+    console.error("GitHub OAuth error:", tokenData)
+    return NextResponse.json({
+      error: tokenData.error_description || "Falha na autenticação.",
+      github_error: tokenData.error,
+      client_id_prefix: process.env.DEPLOY_GITHUB_CLIENT_ID?.slice(0, 8),
+    }, { status: 400 })
   }
 
   const ghUserRes = await fetch("https://api.github.com/user", {
