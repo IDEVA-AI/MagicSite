@@ -12,6 +12,8 @@ const STEPS = [
   { key: "workflow", label: "Adicionando workflow de deploy", icon: GitBranch },
 ]
 
+type StepStatus = "pending" | "running" | "done" | "error"
+
 type WorkflowRun = {
   id: number
   status: string
@@ -32,9 +34,10 @@ export function ProvisionProgress({
   onComplete: () => void
 }) {
   const [running, setRunning] = useState(false)
-  const [stepStatuses, setStepStatuses] = useState<Record<string, "pending" | "running" | "done" | "error">>({
+  const [stepStatuses, setStepStatuses] = useState<Record<string, StepStatus>>({
     detect: "pending", ftp: "pending", secrets: "pending", workflow: "pending",
   })
+  const [stepDetails, setStepDetails] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [workflowRun, setWorkflowRun] = useState<WorkflowRun | null>(null)
@@ -44,8 +47,9 @@ export function ProvisionProgress({
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
-  const updateStep = (key: string, status: "running" | "done" | "error") => {
+  const updateStep = (key: string, status: StepStatus, detail?: string) => {
     setStepStatuses((prev) => ({ ...prev, [key]: status }))
+    if (detail) setStepDetails((prev) => ({ ...prev, [key]: detail }))
   }
 
   const pollWorkflowRun = () => {
@@ -71,6 +75,7 @@ export function ProvisionProgress({
     setRunning(true)
     setError(null)
     setWorkflowRun(null)
+    setStepDetails({})
     setStepStatuses({ detect: "running", ftp: "pending", secrets: "pending", workflow: "pending" })
 
     try {
@@ -80,26 +85,85 @@ export function ProvisionProgress({
         const d = await detectRes.json()
         throw new Error(d.error || "Erro ao detectar stack.")
       }
-      updateStep("detect", "done")
-      updateStep("ftp", "running")
+      updateStep("detect", "done", "Stack detectada")
 
-      // Steps 2-4: Provision (FTP + secrets + workflow)
+      // Steps 2-4: Provision via SSE
+      updateStep("ftp", "running", "Iniciando...")
       const provRes = await fetch(`/api/deploy/projects/${projectId}/provision`, { method: "POST" })
+
       if (!provRes.ok) {
+        // Non-SSE error (auth, 404, etc)
         const d = await provRes.json()
         throw new Error(d.error || "Erro no provisionamento.")
       }
 
-      updateStep("ftp", "done")
-      updateStep("secrets", "done")
-      updateStep("workflow", "done")
+      const reader = provRes.body?.getReader()
+      if (!reader) throw new Error("Stream não disponível.")
+
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done: streamDone, value } = await reader.read()
+        if (streamDone) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n\n")
+        buffer = lines.pop() || ""
+
+        for (const chunk of lines) {
+          const dataLine = chunk.replace(/^data: /, "").trim()
+          if (!dataLine) continue
+
+          try {
+            const event = JSON.parse(dataLine)
+
+            if (event.error) {
+              throw new Error(event.error)
+            }
+
+            if (event.done) {
+              // All steps complete
+              setStepStatuses((prev) => {
+                const updated = { ...prev }
+                for (const key of Object.keys(updated)) {
+                  if (updated[key] === "running") updated[key] = "done"
+                }
+                return updated
+              })
+              setDone(true)
+              toast.success("Deploy configurado! Workflow em execução...")
+              onComplete()
+              pollWorkflowRun()
+              setRunning(false)
+              return
+            }
+
+            if (event.step && event.status) {
+              updateStep(event.step, event.status, event.detail)
+            }
+          } catch (parseErr: any) {
+            if (parseErr.message && parseErr.message !== dataLine) {
+              throw parseErr
+            }
+          }
+        }
+      }
+
+      // If stream ended without explicit done event, mark remaining as done
+      setStepStatuses((prev) => {
+        const updated = { ...prev }
+        for (const key of Object.keys(updated)) {
+          if (updated[key] === "running") updated[key] = "done"
+        }
+        return updated
+      })
       setDone(true)
       toast.success("Deploy configurado! Workflow em execução...")
       onComplete()
       pollWorkflowRun()
     } catch (err: any) {
       setError(err.message)
-      // Mark current running step as error
       setStepStatuses((prev) => {
         const updated = { ...prev }
         for (const key of Object.keys(updated)) {
@@ -127,6 +191,7 @@ export function ProvisionProgress({
       <div className="space-y-3 border rounded-lg p-4">
         {STEPS.map((step) => {
           const status = stepStatuses[step.key]
+          const detail = stepDetails[step.key]
           return (
             <div key={step.key} className="flex items-center gap-3">
               {status === "done" ? (
@@ -139,7 +204,12 @@ export function ProvisionProgress({
                 <div className="w-5 h-5 rounded-full border-2 border-muted shrink-0" />
               )}
               <step.icon className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm">{step.label}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm">{step.label}</span>
+                {detail && status === "running" && (
+                  <p className="text-xs text-muted-foreground truncate">{detail}</p>
+                )}
+              </div>
             </div>
           )
         })}

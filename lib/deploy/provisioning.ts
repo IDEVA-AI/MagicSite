@@ -35,16 +35,20 @@ async function updateProjectStatus(projectId: string, status: string, error?: st
     .eq("id", projectId)
 }
 
-export async function provisionProject(input: ProvisionInput): Promise<void> {
+export type ProgressCallback = (step: string, status: "running" | "done" | "error", detail?: string) => void
+
+export async function provisionProject(input: ProvisionInput, onProgress?: ProgressCallback): Promise<void> {
   const {
     projectId, githubToken, cpanelAuth, repoOwner, repoName, branch,
     buildCommand, outputDir, installCommand, nodeVersion, deployPath, cpanelCredentialId
   } = input
 
+  const emit = onProgress || (() => {})
   await updateProjectStatus(projectId, "provisioning")
 
   try {
     // Step 1: Create or reuse FTP account
+    emit("ftp", "running", "Verificando conta FTP...")
     let ftpUsername: string
     let ftpPassword: string
     let ftpServer: string
@@ -93,26 +97,36 @@ export async function provisionProject(input: ProvisionInput): Promise<void> {
       }, { onConflict: "project_id" })
     }
 
+    emit("ftp", "done", `FTP: ${ftpUsername}`)
+
     // Step 2: Set GitHub repo secrets
+    emit("secrets", "running", "Enviando FTP_SERVER...")
     await setRepoSecret(githubToken, repoOwner, repoName, "FTP_SERVER", ftpServer)
+    emit("secrets", "running", "Enviando FTP_USERNAME...")
     await setRepoSecret(githubToken, repoOwner, repoName, "FTP_USERNAME", ftpUsername)
+    emit("secrets", "running", "Enviando FTP_PASSWORD...")
     await setRepoSecret(githubToken, repoOwner, repoName, "FTP_PASSWORD", ftpPassword)
+    emit("secrets", "running", "Enviando FTP_PATH...")
     await setRepoSecret(githubToken, repoOwner, repoName, "FTP_PATH", ftpPath)
+    emit("secrets", "done", "4 secrets configurados")
 
     // Step 3: Commit workflow YAML
+    emit("workflow", "running", "Gerando workflow...")
     const workflowYaml = generateDeployWorkflow({
       buildCommand, outputDir, installCommand, nodeVersion, branch,
     })
 
+    emit("workflow", "running", "Commitando .github/workflows/deploy.yml...")
     await createOrUpdateFile(
       githubToken,
       repoOwner,
       repoName,
       ".github/workflows/deploy.yml",
       workflowYaml,
-      "ci: add automated deploy workflow [DeployBridge]",
+      "ci: add automated deploy workflow [MagicDeploy]",
       branch
     )
+    emit("workflow", "done", "Workflow commitado — deploy iniciado!")
 
     await updateProjectStatus(projectId, "provisioned")
   } catch (err: any) {
