@@ -2,7 +2,7 @@ type CpanelAuth = {
   host: string
   port: number
   username: string
-  password: string
+  password: string // API Token
 }
 
 async function cpanelApi(auth: CpanelAuth, module: string, func: string, params: Record<string, string> = {}) {
@@ -11,7 +11,7 @@ async function cpanelApi(auth: CpanelAuth, module: string, func: string, params:
 
   const response = await fetch(url.toString(), {
     headers: {
-      Authorization: "Basic " + Buffer.from(`${auth.username}:${auth.password}`).toString("base64"),
+      Authorization: `cpanel ${auth.username}:${auth.password}`,
     },
   })
 
