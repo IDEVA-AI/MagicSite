@@ -53,28 +53,7 @@ export default function NewDeployProject() {
   const connectGithub = async () => {
     const res = await fetch("/api/deploy/github/auth")
     const { url } = await res.json()
-    const popup = window.open(url, "github-auth", "width=600,height=700")
-
-    const handler = async (event: MessageEvent) => {
-      if (event.data?.type === "github-oauth-callback" && event.data.code) {
-        window.removeEventListener("message", handler)
-        popup?.close()
-
-        const callbackRes = await fetch("/api/deploy/github/callback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: event.data.code }),
-        })
-
-        if (callbackRes.ok) {
-          setGithubConnected(true)
-          toast.success("GitHub conectado!")
-        } else {
-          toast.error("Falha ao conectar GitHub.")
-        }
-      }
-    }
-    window.addEventListener("message", handler)
+    window.location.href = url
   }
 
   const handleRepoSelect = async (repo: Repo) => {

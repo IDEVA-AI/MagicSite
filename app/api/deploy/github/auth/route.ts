@@ -6,6 +6,7 @@ export async function GET() {
     return NextResponse.json({ error: "GitHub App not configured" }, { status: 500 })
   }
 
-  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow`
+  const redirectUri = encodeURIComponent("https://www.criadordesites.app/app/deploy/github-callback")
+  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow&redirect_uri=${redirectUri}`
   return NextResponse.json({ url })
 }

@@ -11,28 +11,24 @@ export default function GitHubCallback() {
 
   useEffect(() => {
     const code = searchParams.get("code")
-    if (!code) return
-
-    // Try postMessage to opener (popup flow)
-    if (window.opener) {
-      window.opener.postMessage({ type: "github-oauth-callback", code }, "*")
-      setTimeout(() => window.close(), 500)
+    if (!code) {
+      setStatus("Código não encontrado. Tente novamente.")
       return
     }
 
-    // Fallback: if not a popup, call callback API directly
     setStatus("Finalizando conexão...")
     fetch("/api/deploy/github/callback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     })
-      .then((res) => {
+      .then(async (res) => {
         if (res.ok) {
           setStatus("GitHub conectado! Redirecionando...")
           setTimeout(() => router.push("/app/deploy/new"), 1000)
         } else {
-          setStatus("Erro ao conectar. Tente novamente.")
+          const data = await res.json().catch(() => ({}))
+          setStatus(data.error || "Erro ao conectar. Tente novamente.")
         }
       })
       .catch(() => setStatus("Erro ao conectar. Tente novamente."))
