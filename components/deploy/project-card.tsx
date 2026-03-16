@@ -45,10 +45,15 @@ export function DeployProjectCard({
             <span className="bg-secondary px-2 py-0.5 rounded">{project.framework_detected}</span>
           )}
           {project.domain && (
-            <span className="flex items-center gap-1">
+            <a
+              href={`https://${project.domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+            >
               <Globe className="w-3 h-3" />
               {project.domain}
-            </span>
+            </a>
           )}
         </div>
 
