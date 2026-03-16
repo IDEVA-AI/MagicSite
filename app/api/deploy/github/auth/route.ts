@@ -6,6 +6,6 @@ export async function GET() {
     return NextResponse.json({ error: "GitHub App not configured" }, { status: 500 })
   }
 
-  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow`
+  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}`
   return NextResponse.json({ url })
 }
