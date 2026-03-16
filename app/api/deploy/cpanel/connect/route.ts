@@ -12,14 +12,10 @@ export async function POST(request: NextRequest) {
   const { label, host, port, username, password } = body
 
   if (!host || !username || !password) {
-    return NextResponse.json({ error: "Host, usuário e senha são obrigatórios." }, { status: 400 })
+    return NextResponse.json({ error: "URL, usuário e token são obrigatórios." }, { status: 400 })
   }
 
-  const ok = await testConnection({ host, port: port || 2083, username, password })
-  if (!ok) {
-    return NextResponse.json({ error: "Não foi possível conectar ao cPanel. Verifique as credenciais." }, { status: 400 })
-  }
-
+  // Save credentials first
   const { data, error } = await supabase
     .from("deploy_cpanel_credentials")
     .insert({
@@ -35,7 +31,14 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+
+  // Test connection in background (non-blocking)
+  let connected = false
+  try {
+    connected = await testConnection({ host, port: port || 2083, username, password })
+  } catch {}
+
+  return NextResponse.json({ ...data, connected }, { status: 201 })
 }
 
 export async function GET() {
