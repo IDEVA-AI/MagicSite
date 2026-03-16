@@ -36,13 +36,19 @@ export async function testConnection(auth: CpanelAuth): Promise<boolean> {
   }
 }
 
-export async function listDomains(auth: CpanelAuth): Promise<string[]> {
-  const data = await cpanelApi(auth, "DomainInfo", "list_domains")
-  const domains: string[] = []
-  if (data.main_domain) domains.push(data.main_domain)
-  if (data.addon_domains) domains.push(...data.addon_domains)
-  if (data.sub_domains) domains.push(...data.sub_domains)
-  return domains
+export type DomainInfo = {
+  domain: string
+  documentroot: string
+  type: string
+}
+
+export async function listDomains(auth: CpanelAuth): Promise<DomainInfo[]> {
+  const data = await cpanelApi(auth, "DomainInfo", "domains_data", { format: "list" })
+  return (data || []).map((d: any) => ({
+    domain: d.domain,
+    documentroot: d.documentroot || "/public_html",
+    type: d.domain_type || "main",
+  }))
 }
 
 export async function createFtpAccount(
