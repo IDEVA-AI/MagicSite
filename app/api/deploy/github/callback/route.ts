@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       client_id: process.env.DEPLOY_GITHUB_CLIENT_ID,
       client_secret: process.env.DEPLOY_GITHUB_CLIENT_SECRET,
       code,
+      redirect_uri: "https://www.criadordesites.app/app/deploy/github-callback",
     }),
   })
 
