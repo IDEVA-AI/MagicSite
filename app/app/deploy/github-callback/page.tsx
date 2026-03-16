@@ -17,10 +17,11 @@ export default function GitHubCallback() {
     }
 
     setStatus("Finalizando conexão...")
+    const redirect_uri = `${window.location.origin}/app/deploy/github-callback`
     fetch("/api/deploy/github/callback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, redirect_uri }),
     })
       .then(async (res) => {
         if (res.ok) {

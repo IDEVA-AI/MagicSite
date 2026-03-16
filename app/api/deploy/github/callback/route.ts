@@ -7,8 +7,11 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Não autorizado." }, { status: 401 })
 
-  const { code } = await request.json()
+  const { code, redirect_uri } = await request.json()
   if (!code) return NextResponse.json({ error: "Código não fornecido." }, { status: 400 })
+
+  const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "https://criadordesites.app"
+  const callbackUri = redirect_uri || `${origin}/app/deploy/github-callback`
 
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
@@ -17,7 +20,7 @@ export async function POST(request: NextRequest) {
       client_id: process.env.DEPLOY_GITHUB_CLIENT_ID,
       client_secret: process.env.DEPLOY_GITHUB_CLIENT_SECRET,
       code,
-      redirect_uri: "https://www.criadordesites.app/app/deploy/github-callback",
+      redirect_uri: callbackUri,
     }),
   })
 
