@@ -7,17 +7,15 @@ import { Button } from "@/components/ui/button"
 import { RepoSelector } from "@/components/deploy/repo-selector"
 import { CpanelForm } from "@/components/deploy/cpanel-form"
 import { DomainSelector } from "@/components/deploy/domain-selector"
-import { StackDetector } from "@/components/deploy/stack-detector"
 import { ProvisionProgress } from "@/components/deploy/provision-progress"
-import { ArrowLeft, ArrowRight, Github, Server, Search, Rocket, Loader2, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Github, Server, Rocket, Loader2, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
 type Repo = { id: number; name: string; full_name: string; owner: string; private: boolean; default_branch: string; language: string | null }
 
 const STEPS = [
   { title: "GitHub", description: "Conecte e selecione o repositório", icon: Github },
-  { title: "Servidor", description: "Configure o servidor cPanel", icon: Server },
-  { title: "Stack", description: "Detecte e ajuste a stack", icon: Search },
+  { title: "Servidor", description: "Configure o servidor e domínio", icon: Server },
   { title: "Deploy", description: "Provisione e publique", icon: Rocket },
 ]
 
@@ -35,7 +33,6 @@ export default function NewDeployProject() {
   const [deployPath, setDeployPath] = useState("/public_html")
 
   const [projectId, setProjectId] = useState<string | null>(null)
-  const [detectResult, setDetectResult] = useState<any>(null)
 
   useEffect(() => {
     fetch("/api/deploy/github/status")
@@ -94,23 +91,6 @@ export default function NewDeployProject() {
     })
 
     setStep(2)
-  }
-
-  const handleStackNext = async () => {
-    if (!projectId || !detectResult) return
-
-    await fetch(`/api/deploy/projects/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        framework_detected: detectResult.framework_detected,
-        build_command: detectResult.build_command,
-        output_dir: detectResult.output_dir,
-        install_command: detectResult.install_command,
-      }),
-    })
-
-    setStep(3)
   }
 
   return (
@@ -216,44 +196,19 @@ export default function NewDeployProject() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Search className="w-5 h-5" />
-              Detecção de Stack
-            </CardTitle>
-            <CardDescription>Detectamos automaticamente a stack do seu projeto</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <StackDetector
-              projectId={projectId}
-              onDetected={(data) => setDetectResult(data)}
-            />
-
-            {detectResult && (
-              <Button onClick={handleStackNext} className="w-full gap-2">
-                Próximo
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 3 && projectId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
               <Rocket className="w-5 h-5" />
-              Provisionar Deploy
+              Deploy
             </CardTitle>
             <CardDescription>
-              Vamos criar a conta FTP, configurar os secrets e adicionar o workflow de deploy ao seu repositório.
+              Detectamos a stack, configuramos FTP, secrets e workflow automaticamente.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ProvisionProgress
               projectId={projectId}
-              onComplete={() => {
-                setTimeout(() => router.push(`/app/deploy/${projectId}`), 1500)
-              }}
+              repoFullName={selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : undefined}
+              domain={selectedDomain}
+              onComplete={() => {}}
             />
           </CardContent>
         </Card>
