@@ -10,7 +10,7 @@ export default function GitHubCallback() {
   useEffect(() => {
     const code = searchParams.get("code")
     if (code && window.opener) {
-      window.opener.postMessage({ type: "github-oauth-callback", code }, window.location.origin)
+      window.opener.postMessage({ type: "github-oauth-callback", code }, "*")
       window.close()
     }
   }, [searchParams])
