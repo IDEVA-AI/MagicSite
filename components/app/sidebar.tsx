@@ -19,6 +19,7 @@ import {
   User,
   DollarSign,
   LayoutDashboard,
+  Rocket,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -40,6 +41,12 @@ const navigation = [
     name: "Negócios",
     href: "/app/deals",
     icon: DollarSign,
+    section: "main",
+  },
+  {
+    name: "Deploy",
+    href: "/app/deploy",
+    icon: Rocket,
     section: "main",
   },
   {
