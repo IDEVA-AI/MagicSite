@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.criadordesites.app" }],
+      "destination": "https://criadordesites.app/:path",
+      "permanent": true
+    }
+  ]
+}
