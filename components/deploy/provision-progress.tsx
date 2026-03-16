@@ -27,11 +27,13 @@ export function ProvisionProgress({
   repoFullName,
   domain,
   onComplete,
+  autoStart = false,
 }: {
   projectId: string
   repoFullName?: string
   domain?: string
   onComplete: () => void
+  autoStart?: boolean
 }) {
   const [running, setRunning] = useState(false)
   const [stepStatuses, setStepStatuses] = useState<Record<string, StepStatus>>({
@@ -43,9 +45,19 @@ export function ProvisionProgress({
   const [workflowRun, setWorkflowRun] = useState<WorkflowRun | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const startedRef = useRef(false)
+
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
+
+  useEffect(() => {
+    if (autoStart && !startedRef.current && !running && !done && !error) {
+      startedRef.current = true
+      provision()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
 
   const updateStep = (key: string, status: StepStatus, detail?: string) => {
     setStepStatuses((prev) => ({ ...prev, [key]: status }))
@@ -66,6 +78,7 @@ export function ProvisionProgress({
 
         if (latest.status === "completed") {
           if (pollRef.current) clearInterval(pollRef.current)
+          onComplete()
         }
       } catch {}
     }, 5000)
