@@ -1,16 +1,18 @@
 "use client"
 
-import { use } from "react"
+import { use, useState } from "react"
 import { useDeployProject } from "@/hooks/use-deploy-project"
 import { DeployStatusBadge } from "@/components/deploy/deploy-status-badge"
+import { ProvisionProgress } from "@/components/deploy/provision-progress"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, GitBranch, Globe, ExternalLink, RefreshCw, Loader2 } from "lucide-react"
+import { ArrowLeft, GitBranch, Globe, ExternalLink, RefreshCw, Loader2, Rocket } from "lucide-react"
 import Link from "next/link"
 
 export default function DeployProjectDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { project, deploys, loading, reload } = useDeployProject(id)
+  const [showDeploy, setShowDeploy] = useState(false)
 
   if (loading) {
     return (
@@ -113,6 +115,30 @@ export default function DeployProjectDetail({ params }: { params: Promise<{ id: 
 
       <Card>
         <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Deploy</CardTitle>
+            {!showDeploy && (
+              <Button size="sm" onClick={() => setShowDeploy(true)} className="gap-2">
+                <Rocket className="w-4 h-4" />
+                Fazer Deploy
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        {showDeploy && (
+          <CardContent>
+            <ProvisionProgress
+              projectId={id}
+              repoFullName={`${project.github_repo_owner}/${project.github_repo_name}`}
+              domain={project.domain}
+              onComplete={() => reload()}
+            />
+          </CardContent>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Histórico de Deploys</CardTitle>
         </CardHeader>
         <CardContent>
@@ -124,25 +150,23 @@ export default function DeployProjectDetail({ params }: { params: Promise<{ id: 
             <div className="divide-y">
               {deploys.map((deploy) => (
                 <div key={deploy.id} className="flex items-center justify-between py-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <DeployStatusBadge status={deploy.conclusion || deploy.status} />
-                      <span className="text-sm font-mono text-muted-foreground">
-                        {deploy.head_sha?.slice(0, 7)}
-                      </span>
-                    </div>
-                    {deploy.commit_message && (
-                      <p className="text-xs text-muted-foreground truncate max-w-md">
-                        {deploy.commit_message}
-                      </p>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <DeployStatusBadge status={deploy.conclusion || deploy.status} />
+                    <span className="text-sm text-muted-foreground">
+                      Run #{deploy.id}
+                    </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {deploy.completed_at
-                      ? new Date(deploy.completed_at).toLocaleString("pt-BR")
-                      : deploy.started_at
-                        ? "Em andamento..."
-                        : new Date(deploy.created_at).toLocaleString("pt-BR")}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(deploy.created_at).toLocaleString("pt-BR")}
+                    </span>
+                    {deploy.html_url && (
+                      <a href={deploy.html_url} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}

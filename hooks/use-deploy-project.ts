@@ -4,14 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/utils/supabase/client"
 
 export type DeployRun = {
-  id: string
-  github_run_id: number
+  id: number
   status: string
   conclusion: string | null
-  head_sha: string | null
-  commit_message: string | null
-  started_at: string | null
-  completed_at: string | null
+  html_url: string
   created_at: string
 }
 
@@ -30,14 +26,14 @@ export function useDeployProject(id: string) {
 
       const [projectRes, deploysRes] = await Promise.all([
         supabase.from("deploy_projects").select("*").eq("id", id).single(),
-        supabase.from("deploy_runs").select("*").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
+        fetch(`/api/deploy/projects/${id}/deploys`).then(r => r.json()),
       ])
 
       if (projectRes.error) throw projectRes.error
       if (cancelled.current) return
 
       setProject(projectRes.data)
-      setDeploys(deploysRes.data || [])
+      setDeploys(deploysRes.runs || [])
     } catch (err: any) {
       if (cancelled.current) return
       setError(err?.message || "Erro ao carregar projeto.")
