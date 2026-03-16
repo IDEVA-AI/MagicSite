@@ -44,24 +44,60 @@ export async function provisionProject(input: ProvisionInput): Promise<void> {
   await updateProjectStatus(projectId, "provisioning")
 
   try {
-    // Step 1: Create FTP account
-    const ftpPassword = generatePassword()
-    const ftpUser = `deploy_${repoName.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`
-    const ftp = await createFtpAccount(cpanelAuth, ftpUser, ftpPassword, deployPath)
+    // Step 1: Create or reuse FTP account
+    let ftpUsername: string
+    let ftpPassword: string
+    let ftpServer: string
+    let ftpPath: string
 
-    await supabaseAdmin.from("deploy_ftp_accounts").upsert({
-      project_id: projectId,
-      cpanel_credential_id: cpanelCredentialId,
-      ftp_username: ftp.username,
-      ftp_server: ftp.server,
-      ftp_path: ftp.path,
-    }, { onConflict: "project_id" })
+    // Check if FTP account already exists for this project
+    const { data: existingFtp } = await supabaseAdmin
+      .from("deploy_ftp_accounts")
+      .select("*")
+      .eq("project_id", projectId)
+      .maybeSingle()
+
+    if (existingFtp) {
+      // Reuse existing FTP account — generate new password for secrets
+      ftpUsername = existingFtp.ftp_username
+      ftpServer = existingFtp.ftp_server
+      ftpPath = existingFtp.ftp_path
+      ftpPassword = generatePassword()
+    } else {
+      // Create new FTP account
+      ftpPassword = generatePassword()
+      const ftpUser = `deploy_${repoName.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`
+
+      try {
+        const ftp = await createFtpAccount(cpanelAuth, ftpUser, ftpPassword, deployPath)
+        ftpUsername = ftp.username
+        ftpServer = ftp.server
+        ftpPath = ftp.path
+      } catch (err: any) {
+        // If FTP user already exists in cPanel, reuse it with generated credentials
+        if (err.message?.includes("already exists") || err.message?.includes("Já existe")) {
+          ftpUsername = `${ftpUser}@${cpanelAuth.host}`
+          ftpServer = cpanelAuth.host
+          ftpPath = deployPath.endsWith("/") ? deployPath : deployPath + "/"
+        } else {
+          throw err
+        }
+      }
+
+      await supabaseAdmin.from("deploy_ftp_accounts").upsert({
+        project_id: projectId,
+        cpanel_credential_id: cpanelCredentialId,
+        ftp_username: ftpUsername,
+        ftp_server: ftpServer,
+        ftp_path: ftpPath,
+      }, { onConflict: "project_id" })
+    }
 
     // Step 2: Set GitHub repo secrets
-    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_SERVER", ftp.server)
-    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_USERNAME", ftp.username)
+    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_SERVER", ftpServer)
+    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_USERNAME", ftpUsername)
     await setRepoSecret(githubToken, repoOwner, repoName, "FTP_PASSWORD", ftpPassword)
-    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_PATH", ftp.path)
+    await setRepoSecret(githubToken, repoOwner, repoName, "FTP_PATH", ftpPath)
 
     // Step 3: Commit workflow YAML
     const workflowYaml = generateDeployWorkflow({
