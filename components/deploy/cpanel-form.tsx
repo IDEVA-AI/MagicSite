@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Loader2, Server, CheckCircle2 } from "lucide-react"
+import { Loader2, Server, CheckCircle2, Link, User, KeyRound } from "lucide-react"
 import { toast } from "sonner"
 
 type CpanelCredential = {
@@ -12,6 +12,23 @@ type CpanelCredential = {
   label: string
   host: string
   username: string
+}
+
+function parseServerUrl(raw: string): { host: string; port: number } {
+  let url = raw.trim()
+  // Add protocol if missing so URL parser works
+  if (!url.startsWith("http")) url = `https://${url}`
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname
+    const port = parsed.port ? parseInt(parsed.port) : 2083
+    return { host, port }
+  } catch {
+    // Fallback: try to extract host:port manually
+    const clean = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "")
+    const [host, portStr] = clean.split(":")
+    return { host, port: portStr ? parseInt(portStr) : 2083 }
+  }
 }
 
 export function CpanelForm({
@@ -22,29 +39,32 @@ export function CpanelForm({
   existingCredentials: CpanelCredential[]
 }) {
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ label: "", host: "", port: "2083", username: "", password: "" })
+  const [form, setForm] = useState({ url: "", username: "", token: "" })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
 
     try {
+      const { host, port } = parseServerUrl(form.url)
+      if (!host) throw new Error("URL do servidor inválida.")
+
       const res = await fetch("/api/deploy/cpanel/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          label: form.label || form.host,
-          host: form.host,
-          port: parseInt(form.port),
+          label: host,
+          host,
+          port,
           username: form.username,
-          password: form.password,
+          password: form.token,
         }),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      toast.success("cPanel conectado!")
+      toast.success("Servidor conectado!")
       onConnected(data)
     } catch (err: any) {
       toast.error(err.message || "Erro ao conectar.")
@@ -80,30 +100,26 @@ export function CpanelForm({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label>Host</Label>
-            <Input placeholder="meusite.com" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required />
-          </div>
-          <div className="space-y-1">
-            <Label>Porta</Label>
-            <Input placeholder="2083" value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
-          </div>
+        <div className="space-y-1">
+          <Label className="flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />URL do Servidor</Label>
+          <Input
+            placeholder="https://servidor.com:2083"
+            value={form.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            required
+          />
+          <p className="text-xs text-muted-foreground">Cole o link completo do cPanel (a porta será extraída automaticamente)</p>
         </div>
         <div className="space-y-1">
-          <Label>Usuário</Label>
-          <Input placeholder="usuario_cpanel" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+          <Label className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Usuário</Label>
+          <Input placeholder="usuario" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
         </div>
         <div className="space-y-1">
-          <Label>Senha</Label>
-          <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+          <Label className="flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" />Token de Acesso</Label>
+          <Input type="password" placeholder="Token da API do cPanel" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} required />
         </div>
-        <div className="space-y-1">
-          <Label>Apelido (opcional)</Label>
-          <Input placeholder="Meu servidor" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-        </div>
-        <Button type="submit" disabled={saving} className="w-full">
-          {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+        <Button type="submit" disabled={saving} className="w-full gap-2">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
           Conectar
         </Button>
       </form>
