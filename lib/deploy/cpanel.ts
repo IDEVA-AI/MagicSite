@@ -71,6 +71,19 @@ export async function createFtpAccount(
   }
 }
 
+export async function changeFtpPassword(
+  auth: CpanelAuth,
+  ftpUser: string,
+  newPassword: string
+): Promise<void> {
+  // ftpUser here is the short username (without @host)
+  const shortUser = ftpUser.includes("@") ? ftpUser.split("@")[0] : ftpUser
+  await cpanelApi(auth, "Ftp", "passwd", {
+    user: shortUser,
+    pass: newPassword,
+  })
+}
+
 export async function createSubdomain(auth: CpanelAuth, subdomain: string, domain: string) {
   await cpanelApi(auth, "SubDomain", "addsubdomain", {
     domain: subdomain,

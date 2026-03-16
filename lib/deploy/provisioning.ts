@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { createFtpAccount } from "./cpanel"
+import { createFtpAccount, changeFtpPassword } from "./cpanel"
 import { setRepoSecret, createOrUpdateFile } from "./github"
 import { generateDeployWorkflow } from "./workflow"
 
@@ -62,11 +62,13 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
       .maybeSingle()
 
     if (existingFtp) {
-      // Reuse existing FTP account — generate new password for secrets
+      // Reuse existing FTP account — generate new password and update on cPanel
       ftpUsername = existingFtp.ftp_username
       ftpServer = existingFtp.ftp_server
       ftpPath = existingFtp.ftp_path
       ftpPassword = generatePassword()
+      emit("ftp", "running", "Atualizando senha FTP no cPanel...")
+      await changeFtpPassword(cpanelAuth, ftpUsername, ftpPassword)
     } else {
       // Create new FTP account
       ftpPassword = generatePassword()
@@ -78,11 +80,13 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
         ftpServer = ftp.server
         ftpPath = ftp.path
       } catch (err: any) {
-        // If FTP user already exists in cPanel, reuse it with generated credentials
+        // If FTP user already exists in cPanel, reuse it and update password
         if (err.message?.includes("already exists") || err.message?.includes("Já existe")) {
           ftpUsername = `${ftpUser}@${cpanelAuth.host}`
           ftpServer = cpanelAuth.host
           ftpPath = deployPath.endsWith("/") ? deployPath : deployPath + "/"
+          emit("ftp", "running", "Conta FTP já existe, atualizando senha...")
+          await changeFtpPassword(cpanelAuth, ftpUsername, ftpPassword)
         } else {
           throw err
         }
