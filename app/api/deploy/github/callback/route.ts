@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { encrypt } from "@/lib/deploy/encryption"
 
+function normalizeOrigin(origin: string): string {
+  return origin.replace("://criadordesites.app", "://www.criadordesites.app")
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -10,8 +14,8 @@ export async function POST(request: NextRequest) {
   const { code, redirect_uri } = await request.json()
   if (!code) return NextResponse.json({ error: "Código não fornecido." }, { status: 400 })
 
-  const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "https://criadordesites.app"
-  const callbackUri = redirect_uri || `${origin}/app/deploy/github-callback`
+  const raw = redirect_uri || `${request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "https://www.criadordesites.app"}/app/deploy/github-callback`
+  const callbackUri = normalizeOrigin(raw)
 
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
