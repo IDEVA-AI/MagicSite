@@ -19,12 +19,27 @@ async function cpanelApi(auth: CpanelAuth, module: string, func: string, params:
     throw new Error(`cPanel API error: ${response.status} ${response.statusText}`)
   }
 
-  const data = await response.json()
-  if (data.errors?.length) {
-    throw new Error(`cPanel: ${data.errors.join(", ")}`)
+  const result = await response.json()
+  console.log(`[cPanel API] ${module}::${func}`, JSON.stringify({
+    status: result.status,
+    errors: result.errors,
+    messages: result.messages,
+    warnings: result.warnings,
+    metadata: result.metadata,
+    hasData: !!result.data,
+  }))
+
+  if (result.errors?.length) {
+    throw new Error(`cPanel: ${result.errors.join(", ")}`)
   }
 
-  return data.data
+  // UAPI can return status 0 with errors in messages
+  if (result.status === 0) {
+    const msg = result.messages?.join(", ") || result.statusmsg || "Operação falhou no cPanel"
+    throw new Error(`cPanel: ${msg}`)
+  }
+
+  return result.data
 }
 
 export async function testConnection(auth: CpanelAuth): Promise<boolean> {

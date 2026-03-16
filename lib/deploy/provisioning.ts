@@ -147,8 +147,23 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
 }
 
 function generatePassword(length = 24): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  // Must include upper, lower, digit, and special char for cPanel password policy
+  // Only FTP-safe special chars (no @, :, space, or control chars)
+  const lower = "abcdefghijklmnopqrstuvwxyz"
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  const digits = "0123456789"
+  const special = "!#$%^&*_+-="
+  const all = lower + upper + digits + special
+
   const bytes = new Uint8Array(length)
   crypto.getRandomValues(bytes)
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("")
+
+  // Ensure at least one of each required type
+  const password = Array.from(bytes, (b) => all[b % all.length])
+  password[0] = upper[bytes[0] % upper.length]
+  password[1] = lower[bytes[1] % lower.length]
+  password[2] = digits[bytes[2] % digits.length]
+  password[3] = special[bytes[3] % special.length]
+
+  return password.join("")
 }
