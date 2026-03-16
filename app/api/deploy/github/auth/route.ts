@@ -1,11 +1,13 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const clientId = process.env.DEPLOY_GITHUB_CLIENT_ID
   if (!clientId) {
     return NextResponse.json({ error: "GitHub App not configured" }, { status: 500 })
   }
 
-  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow`
+  const origin = request.headers.get("origin") || request.headers.get("referer")?.replace(/\/[^/]*$/, "") || "https://criadordesites.app"
+  const redirectUri = `${origin}/app/deploy/github-callback`
+  const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow&redirect_uri=${encodeURIComponent(redirectUri)}`
   return NextResponse.json({ url })
 }
