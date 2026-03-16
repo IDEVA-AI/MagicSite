@@ -101,6 +101,13 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
       }, { onConflict: "project_id" })
     }
 
+    console.log("[Provision] FTP credentials:", {
+      server: ftpServer,
+      username: ftpUsername,
+      path: ftpPath,
+      passwordLength: ftpPassword.length,
+      passwordPreview: ftpPassword.slice(0, 4) + "...",
+    })
     emit("ftp", "done", `FTP: ${ftpUsername}`)
 
     // Step 2: Set GitHub repo secrets
@@ -140,7 +147,7 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
 }
 
 function generatePassword(length = 24): string {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   const bytes = new Uint8Array(length)
   crypto.getRandomValues(bytes)
   return Array.from(bytes, (b) => chars[b % chars.length]).join("")
