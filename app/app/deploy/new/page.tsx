@@ -186,6 +186,7 @@ export default function NewDeployProject() {
                   setCpanelCredentials([cred, ...cpanelCredentials])
                 }
               }}
+              onCredentialsChange={setCpanelCredentials}
             />
 
             {selectedCpanel && (
