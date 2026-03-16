@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "GitHub App not configured" }, { status: 500 })
   }
 
-  const raw = request.headers.get("origin") || request.headers.get("referer")?.replace(/\/[^/]*$/, "") || process.env.NEXT_PUBLIC_APP_URL || "https://www.criadordesites.app"
+  const referer = request.headers.get("referer")
+  const refererOrigin = referer ? new URL(referer).origin : undefined
+  const raw = request.headers.get("origin") || refererOrigin || process.env.NEXT_PUBLIC_APP_URL || "https://www.criadordesites.app"
   const origin = normalizeOrigin(raw)
   const redirectUri = encodeURIComponent(`${origin}/app/deploy/github-callback`)
   const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo,workflow&redirect_uri=${redirectUri}`
