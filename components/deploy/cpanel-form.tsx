@@ -39,6 +39,7 @@ export function CpanelForm({
   existingCredentials: CpanelCredential[]
 }) {
   const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(existingCredentials.length === 0)
   const [form, setForm] = useState({ url: "", username: "", token: "" })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +66,7 @@ export function CpanelForm({
       if (!res.ok) throw new Error(data.error)
 
       toast.success("Servidor conectado!")
+      setShowForm(false)
       onConnected(data)
     } catch (err: any) {
       toast.error(err.message || "Erro ao conectar.")
@@ -92,37 +94,51 @@ export function CpanelForm({
               <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />
             </button>
           ))}
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">ou adicione novo</span></div>
-          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />URL do Servidor</Label>
-          <Input
-            placeholder="https://servidor.com:2083"
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value })}
-            required
-          />
-          <p className="text-xs text-muted-foreground">Cole o link completo do cPanel (a porta será extraída automaticamente)</p>
-        </div>
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Usuário</Label>
-          <Input placeholder="usuario" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
-        </div>
-        <div className="space-y-1">
-          <Label className="flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" />Token de Acesso</Label>
-          <Input type="password" placeholder="Token da API do cPanel" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} required />
-        </div>
-        <Button type="submit" disabled={saving} className="w-full gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
-          Conectar
+      {!showForm ? (
+        <Button variant="outline" onClick={() => setShowForm(true)} className="w-full gap-2 text-muted-foreground">
+          <Server className="w-4 h-4" />
+          Adicionar novo servidor
         </Button>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {existingCredentials.length > 0 && (
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">novo servidor</span></div>
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1.5"><Link className="w-3.5 h-3.5" />URL do Servidor</Label>
+            <Input
+              placeholder="https://servidor.com:2083"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              required
+            />
+            <p className="text-xs text-muted-foreground">Cole o link completo do cPanel (a porta será extraída automaticamente)</p>
+          </div>
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Usuário</Label>
+            <Input placeholder="usuario" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+          </div>
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" />Token de Acesso</Label>
+            <Input type="password" placeholder="Token da API do cPanel" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} required />
+          </div>
+          <div className="flex gap-2">
+            {existingCredentials.length > 0 && (
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)} className="flex-1">Cancelar</Button>
+            )}
+            <Button type="submit" disabled={saving} className="flex-1 gap-2">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+              Conectar
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }
