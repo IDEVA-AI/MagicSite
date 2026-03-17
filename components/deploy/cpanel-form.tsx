@@ -148,10 +148,12 @@ export function CpanelForm({
       )}
 
       {!showForm ? (
-        <Button variant="outline" onClick={() => { setEditingId(null); setForm({ url: "", username: "", token: "" }); setShowForm(true) }} className="w-full gap-2 text-muted-foreground">
-          <Server className="w-4 h-4" />
-          Adicionar novo servidor
-        </Button>
+        <button
+          onClick={() => { setEditingId(null); setForm({ url: "", username: "", token: "" }); setShowForm(true) }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          + Adicionar outro servidor
+        </button>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
           {existingCredentials.length > 0 && (
