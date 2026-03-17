@@ -85,16 +85,30 @@ export async function createFtpAccount(
   ftpPass: string,
   directory: string
 ): Promise<{ server: string; username: string; path: string }> {
+  // Get the main account homedir to make the path relative
+  const accounts = await listFtpAccounts(auth)
+  const mainAccount = accounts.find((a) => a.user === auth.username)
+  const homeDir = mainAccount?.homedir || `/home/${auth.username}`
+
+  // Convert absolute path to relative (cPanel add_ftp expects relative to home)
+  let relativeDir = directory
+  if (directory.startsWith(homeDir)) {
+    relativeDir = directory.slice(homeDir.length)
+    if (relativeDir.startsWith("/")) relativeDir = relativeDir.slice(1)
+  }
+
+  console.log("[cPanel] Creating FTP account:", { ftpUser, directory, homeDir, relativeDir })
+
   await cpanelApi(auth, "Ftp", "add_ftp", {
     user: ftpUser,
     pass: ftpPass,
-    homedir: directory,
+    homedir: relativeDir,
     quota: "0",
   })
 
   // Get the real FTP username from cPanel (may be prefixed with cpanel user)
-  const accounts = await listFtpAccounts(auth)
-  const match = accounts.find((a) => a.user.includes(ftpUser))
+  const updatedAccounts = await listFtpAccounts(auth)
+  const match = updatedAccounts.find((a) => a.user.includes(ftpUser))
   const realUsername = match?.user || `${ftpUser}@${auth.host}`
 
   console.log("[cPanel] FTP account created, real username:", realUsername)
