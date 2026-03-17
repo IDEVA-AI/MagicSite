@@ -132,7 +132,6 @@ export default function DeployProjectDetail({ params }: { params: Promise<{ id: 
               repoFullName={`${project.github_repo_owner}/${project.github_repo_name}`}
               domain={project.domain}
               onComplete={() => reload()}
-              autoStart
             />
           </CardContent>
         )}
