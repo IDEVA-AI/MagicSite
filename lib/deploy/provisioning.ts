@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { createFtpAccount, changeFtpPassword } from "./cpanel"
+import { createFtpAccount, changeFtpPassword, findFtpAccount } from "./cpanel"
 import { setRepoSecret, createOrUpdateFile } from "./github"
 import { generateDeployWorkflow } from "./workflow"
 
@@ -61,31 +61,32 @@ export async function provisionProject(input: ProvisionInput, onProgress?: Progr
       .eq("project_id", projectId)
       .maybeSingle()
 
+    const ftpUserBase = `deploy_${repoName.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`
+    ftpPassword = generatePassword()
+    ftpServer = cpanelAuth.host
+    ftpPath = "./"
+
     if (existingFtp) {
-      // Reuse existing FTP account — generate new password and update on cPanel
-      ftpUsername = existingFtp.ftp_username
-      ftpServer = existingFtp.ftp_server
-      ftpPath = existingFtp.ftp_path
-      ftpPassword = generatePassword()
-      emit("ftp", "running", "Atualizando senha FTP no cPanel...")
+      // Reuse existing FTP account — look up real username and update password
+      emit("ftp", "running", "Buscando conta FTP no cPanel...")
+      const realAccount = await findFtpAccount(cpanelAuth, ftpUserBase)
+      ftpUsername = realAccount?.user || existingFtp.ftp_username
+      emit("ftp", "running", "Atualizando senha FTP...")
       await changeFtpPassword(cpanelAuth, ftpUsername, ftpPassword)
     } else {
       // Create new FTP account
-      ftpPassword = generatePassword()
-      const ftpUser = `deploy_${repoName.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`
-
       try {
-        const ftp = await createFtpAccount(cpanelAuth, ftpUser, ftpPassword, deployPath)
+        const ftp = await createFtpAccount(cpanelAuth, ftpUserBase, ftpPassword, deployPath)
         ftpUsername = ftp.username
         ftpServer = ftp.server
         ftpPath = ftp.path
       } catch (err: any) {
-        // If FTP user already exists in cPanel, reuse it and update password
+        // If FTP user already exists in cPanel, find real username and update password
         if (err.message?.includes("already exists") || err.message?.includes("Já existe")) {
-          ftpUsername = `${ftpUser}@${cpanelAuth.host}`
-          ftpServer = cpanelAuth.host
-          ftpPath = deployPath.endsWith("/") ? deployPath : deployPath + "/"
-          emit("ftp", "running", "Conta FTP já existe, atualizando senha...")
+          emit("ftp", "running", "Conta FTP já existe, buscando username real...")
+          const realAccount = await findFtpAccount(cpanelAuth, ftpUserBase)
+          ftpUsername = realAccount?.user || `${ftpUserBase}@${cpanelAuth.host}`
+          emit("ftp", "running", "Atualizando senha FTP...")
           await changeFtpPassword(cpanelAuth, ftpUsername, ftpPassword)
         } else {
           throw err

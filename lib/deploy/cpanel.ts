@@ -66,6 +66,19 @@ export async function listDomains(auth: CpanelAuth): Promise<DomainInfo[]> {
   }))
 }
 
+export type FtpAccount = {
+  user: string   // full login username (e.g. "julio861_deploy_repo" or "deploy_repo@domain.com")
+  homedir: string
+}
+
+export async function listFtpAccounts(auth: CpanelAuth): Promise<FtpAccount[]> {
+  const data = await cpanelApi(auth, "Ftp", "list_ftp", {})
+  return (data || []).map((a: any) => ({
+    user: a.user,
+    homedir: a.homedir || a.dir || "",
+  }))
+}
+
 export async function createFtpAccount(
   auth: CpanelAuth,
   ftpUser: string,
@@ -79,11 +92,26 @@ export async function createFtpAccount(
     quota: "0",
   })
 
+  // Get the real FTP username from cPanel (may be prefixed with cpanel user)
+  const accounts = await listFtpAccounts(auth)
+  const match = accounts.find((a) => a.user.includes(ftpUser))
+  const realUsername = match?.user || `${ftpUser}@${auth.host}`
+
+  console.log("[cPanel] FTP account created, real username:", realUsername)
+
   return {
     server: auth.host,
-    username: `${ftpUser}@${auth.host}`,
-    path: directory.endsWith("/") ? directory : directory + "/",
+    username: realUsername,
+    path: "./",
   }
+}
+
+export async function findFtpAccount(
+  auth: CpanelAuth,
+  ftpUserPattern: string
+): Promise<FtpAccount | null> {
+  const accounts = await listFtpAccounts(auth)
+  return accounts.find((a) => a.user.includes(ftpUserPattern)) || null
 }
 
 export async function changeFtpPassword(

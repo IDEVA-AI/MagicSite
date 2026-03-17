@@ -29,8 +29,10 @@ jobs:
           server: \${{ secrets.FTP_SERVER }}
           username: \${{ secrets.FTP_USERNAME }}
           password: \${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
           local-dir: ./
           server-dir: \${{ secrets.FTP_PATH }}
+          security: loose
 `
   }
 
@@ -63,7 +65,9 @@ jobs:
           server: \${{ secrets.FTP_SERVER }}
           username: \${{ secrets.FTP_USERNAME }}
           password: \${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
           local-dir: ./${outputDir}/
           server-dir: \${{ secrets.FTP_PATH }}
+          security: loose
 `
 }
