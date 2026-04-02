@@ -141,10 +141,38 @@ export async function changeFtpPassword(
   })
 }
 
-export async function createSubdomain(auth: CpanelAuth, subdomain: string, domain: string) {
+export type SubdomainInfo = {
+  subdomain: string
+  domain: string
+  fullDomain: string
+  documentroot: string
+}
+
+export async function listSubdomains(auth: CpanelAuth): Promise<SubdomainInfo[]> {
+  const data = await cpanelApi(auth, "SubDomain", "list", {})
+  return (data || []).map((s: any) => ({
+    subdomain: s.subdomain || s.relname || "",
+    domain: s.rootdomain || s.domain || "",
+    fullDomain: s.domain || `${s.subdomain}.${s.rootdomain}`,
+    documentroot: s.dir || s.documentroot || "",
+  }))
+}
+
+export async function createSubdomain(
+  auth: CpanelAuth,
+  subdomain: string,
+  domain: string
+): Promise<SubdomainInfo> {
+  const dir = `/public_html/${subdomain}.${domain}`
   await cpanelApi(auth, "SubDomain", "addsubdomain", {
     domain: subdomain,
     rootdomain: domain,
-    dir: `/public_html/${subdomain}.${domain}`,
+    dir,
   })
+  return {
+    subdomain,
+    domain,
+    fullDomain: `${subdomain}.${domain}`,
+    documentroot: dir,
+  }
 }
