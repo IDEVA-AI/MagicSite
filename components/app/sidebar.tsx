@@ -20,6 +20,7 @@ import {
   DollarSign,
   LayoutDashboard,
   Rocket,
+  Server,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -47,6 +48,12 @@ const navigation = [
     name: "Deploy",
     href: "/app/deploy",
     icon: Rocket,
+    section: "main",
+  },
+  {
+    name: "Servidores",
+    href: "/app/deploy/servers",
+    icon: Server,
     section: "main",
   },
   {
@@ -111,7 +118,13 @@ export function AppSidebar({
     if (exactMatchRoutes.includes(href)) {
       return pathname === href
     }
-    return pathname === href || pathname.startsWith(href + "/")
+    const isMatch = pathname === href || pathname.startsWith(href + "/")
+    if (!isMatch) return false
+    // If a more specific nav item matches, don't highlight this one
+    const moreSpecific = navigation.some(
+      (other) => other.href !== href && other.href.startsWith(href + "/") && (pathname === other.href || pathname.startsWith(other.href + "/"))
+    )
+    return !moreSpecific
   }
 
   const renderNavItem = (item: (typeof navigation)[number], isMobile: boolean) => {
