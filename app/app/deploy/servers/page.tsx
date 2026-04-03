@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Plus, Globe, FolderOpen, Server, ArrowLeft } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Loader2, Plus, Globe, FolderOpen, Server, ArrowLeft, Link as LinkIcon, User, KeyRound, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -41,6 +43,100 @@ export default function ServersPage() {
   const [loadingSubdomains, setLoadingSubdomains] = useState(false)
   const [newName, setNewName] = useState("")
   const [creating, setCreating] = useState(false)
+
+  // Server form state
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [serverForm, setServerForm] = useState({ url: "", username: "", token: "" })
+  const [savingServer, setSavingServer] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  function parseServerUrl(raw: string): { host: string; port: number } {
+    let url = raw.trim()
+    if (!url.startsWith("http")) url = `https://${url}`
+    try {
+      const parsed = new URL(url)
+      return { host: parsed.hostname, port: parsed.port ? parseInt(parsed.port) : 2083 }
+    } catch {
+      const clean = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "")
+      const [host, portStr] = clean.split(":")
+      return { host, port: portStr ? parseInt(portStr) : 2083 }
+    }
+  }
+
+  function openAddDialog() {
+    setEditingId(null)
+    setServerForm({ url: "", username: "", token: "" })
+    setDialogOpen(true)
+  }
+
+  function openEditDialog(cred: Credential) {
+    setEditingId(cred.id)
+    setServerForm({ url: `https://${cred.host}:${cred.port}`, username: cred.username, token: "" })
+    setDialogOpen(true)
+  }
+
+  async function handleDeleteServer(id: string) {
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/deploy/cpanel/connect?id=${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Erro ao excluir.")
+      toast.success("Servidor removido.")
+      setCredentials((prev) => prev.filter((c) => c.id !== id))
+      if (selectedCred === id) setSelectedCred("")
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function handleSaveServer(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingServer(true)
+    try {
+      const { host, port } = parseServerUrl(serverForm.url)
+      if (!host) throw new Error("URL do servidor inválida.")
+
+      if (editingId) {
+        const res = await fetch("/api/deploy/cpanel/connect", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingId,
+            host,
+            port,
+            username: serverForm.username,
+            ...(serverForm.token ? { password: serverForm.token } : {}),
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        toast.success("Servidor atualizado!")
+        setCredentials((prev) =>
+          prev.map((c) => c.id === editingId ? { ...c, host, port, label: host, username: serverForm.username } : c)
+        )
+      } else {
+        const res = await fetch("/api/deploy/cpanel/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: host, host, port, username: serverForm.username, password: serverForm.token }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        toast.success("Servidor adicionado!")
+        setCredentials((prev) => [data, ...prev])
+      }
+
+      setDialogOpen(false)
+      setEditingId(null)
+      setServerForm({ url: "", username: "", token: "" })
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar servidor.")
+    } finally {
+      setSavingServer(false)
+    }
+  }
 
   // Load credentials
   useEffect(() => {
@@ -150,11 +246,46 @@ export default function ServersPage() {
 
       {/* Server Selection */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Server className="w-4 h-4" />
             Servidor cPanel
           </CardTitle>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1" onClick={openAddDialog}>
+                <Plus className="w-4 h-4" />
+                Adicionar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Editar Servidor" : "Adicionar Servidor"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSaveServer} className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" />URL do Servidor</Label>
+                  <Input placeholder="https://servidor.com:2083" value={serverForm.url} onChange={(e) => setServerForm({ ...serverForm, url: e.target.value })} required />
+                  <p className="text-xs text-muted-foreground">Cole o link completo do cPanel (a porta será extraída automaticamente)</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" />Usuário</Label>
+                  <Input placeholder="usuario" value={serverForm.username} onChange={(e) => setServerForm({ ...serverForm, username: e.target.value })} required />
+                </div>
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1.5"><KeyRound className="w-3.5 h-3.5" />Token de Acesso</Label>
+                  <Input type="password" placeholder={editingId ? "Deixe vazio para manter o atual" : "Token da API do cPanel"} value={serverForm.token} onChange={(e) => setServerForm({ ...serverForm, token: e.target.value })} required={!editingId} />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)} className="flex-1">Cancelar</Button>
+                  <Button type="submit" disabled={savingServer} className="flex-1 gap-2">
+                    {savingServer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                    {editingId ? "Salvar" : "Conectar"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -164,12 +295,7 @@ export default function ServersPage() {
           ) : credentials.length === 0 ? (
             <div className="text-center py-6 space-y-2">
               <p className="text-sm text-muted-foreground">Nenhum servidor cadastrado.</p>
-              <Link href="/app/deploy/new">
-                <Button size="sm" variant="outline" className="gap-1">
-                  <Plus className="w-4 h-4" />
-                  Adicionar no wizard de deploy
-                </Button>
-              </Link>
+              <p className="text-xs text-muted-foreground">Clique em "Adicionar" para conectar seu primeiro servidor cPanel.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -187,18 +313,34 @@ export default function ServersPage() {
               </Select>
 
               {selectedCredObj && (
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Host</p>
-                    <p className="font-medium">{selectedCredObj.host}</p>
+                <div className="flex items-start justify-between">
+                  <div className="grid grid-cols-3 gap-4 text-sm flex-1">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Host</p>
+                      <p className="font-medium">{selectedCredObj.host}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Porta</p>
+                      <p className="font-medium">{selectedCredObj.port}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Usuário</p>
+                      <p className="font-medium">{selectedCredObj.username}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Porta</p>
-                    <p className="font-medium">{selectedCredObj.port}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Usuário</p>
-                    <p className="font-medium">{selectedCredObj.username}</p>
+                  <div className="flex gap-1 ml-4">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(selectedCredObj)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteServer(selectedCredObj.id)}
+                      disabled={deletingId === selectedCredObj.id}
+                    >
+                      {deletingId === selectedCredObj.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </Button>
                   </div>
                 </div>
               )}
