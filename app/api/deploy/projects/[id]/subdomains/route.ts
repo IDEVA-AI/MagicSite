@@ -54,9 +54,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Não autorizado." }, { status: 401 })
 
-  const { subdomain } = await request.json()
+  const { subdomain, domain } = await request.json()
   if (!subdomain || typeof subdomain !== "string") {
     return NextResponse.json({ error: "Nome do subdomínio é obrigatório." }, { status: 400 })
+  }
+  if (!domain || typeof domain !== "string") {
+    return NextResponse.json({ error: "Domínio é obrigatório." }, { status: 400 })
   }
 
   // Validate subdomain format: only lowercase alphanumeric and hyphens
@@ -71,15 +74,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single()
 
   if (!project) return NextResponse.json({ error: "Projeto não encontrado." }, { status: 404 })
-  if (!project.cpanel_credential_id || !project.domain) {
-    return NextResponse.json({ error: "Servidor cPanel ou domínio não configurado." }, { status: 400 })
+  if (!project.cpanel_credential_id) {
+    return NextResponse.json({ error: "Servidor cPanel não configurado." }, { status: 400 })
   }
 
   const auth = await getCpanelAuth(supabase, project)
   if (!auth) return NextResponse.json({ error: "Credencial cPanel não encontrada." }, { status: 404 })
 
   try {
-    const result = await createSubdomain(auth, subdomain, project.domain)
+    const result = await createSubdomain(auth, subdomain, domain)
     return NextResponse.json({ data: result })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })

@@ -192,7 +192,7 @@ export default function DeployProjectDetail({ params }: { params: Promise<{ id: 
         </TabsContent>
 
         <TabsContent value="server" className="space-y-6 mt-4">
-          <SubdomainManager projectId={id} domain={project.domain} />
+          <SubdomainManager projectId={id} cpanelCredentialId={project.cpanel_credential_id} />
         </TabsContent>
       </Tabs>
     </div>
